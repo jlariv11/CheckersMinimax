@@ -89,9 +89,14 @@ sf::Vector2f Game::getClosestPosition(Checker *checker) {
 }
 
 bool Game::checkValidMove() {
+    int checkerX = currentChecker->getPosition().x;
+    int checkerY = currentChecker->getPosition().y;
+    for(Checker* checker : checkers) {
+        if(checker->getPosition().x == round(checkerX) && checker->getPosition().y == round(checkerY)) {
+            return false;
+        }
+    }
     if(currentChecker->getPlayer() == RED) {
-        int checkerX = currentChecker->getPosition().x;
-        int checkerY = currentChecker->getPosition().y;
         if(checkerX > 0 && checkerX < WINDOW_WIDTH && checkerY > 0 && checkerY < WINDOW_HEIGHT) {
             if(checkerX < lastCheckerPosition.x + 100 && checkerX > lastCheckerPosition.x - 100) {
                 if(checkerY > lastCheckerPosition.y + 25 && checkerY < lastCheckerPosition.y + 100) {
