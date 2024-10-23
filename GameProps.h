@@ -12,6 +12,7 @@
 #define BOARD_SQUARE_SIZE 50
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
+#define CHECKER_RADIUS 25
 enum Player {
     RED=0,
     BLACK=1,

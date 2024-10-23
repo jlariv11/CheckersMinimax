@@ -51,9 +51,10 @@ bool Checker::isKing() {
 
 
 void Checker::draw() {
-    sf::CircleShape shape(25);
+    sf::CircleShape shape(CHECKER_RADIUS);
     shape.setPosition(posX, posY);
     shape.setFillColor(player == RED ? sf::Color::Red : sf::Color::Black);
+    shape.setOrigin(CHECKER_RADIUS, CHECKER_RADIUS);
     ScreenManager::getInstance()->getWindow()->draw(shape);
 }
 

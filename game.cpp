@@ -51,13 +51,13 @@ void Game::initalizeBoard() {
         }
     }
     bool corner = false;
-    int posX = BOARD_OFFSET_X + BOARD_SQUARE_SIZE;
-    int posY = BOARD_OFFSET_Y;
+    int posX = BOARD_OFFSET_X + BOARD_SQUARE_SIZE*1.5;
+    int posY = BOARD_OFFSET_Y + BOARD_SQUARE_SIZE/2;
     for(int i = 0; i < boardPositions.size(); i++) {
         if(i != 0 && i % 4 == 0) {
             corner = !corner;
             posY += BOARD_SQUARE_SIZE;
-            posX = BOARD_OFFSET_X + (corner ? 0 : BOARD_SQUARE_SIZE);
+            posX = (BOARD_OFFSET_X + BOARD_SQUARE_SIZE/2) + (corner ? 0 : BOARD_SQUARE_SIZE);
         }
         boardPositions[i] = sf::Vector2f(posX, posY);
         posX += BOARD_SQUARE_SIZE * 2;
@@ -85,28 +85,11 @@ int Game::round(int num) {
 }
 
 sf::Vector2f Game::getClosestPosition(Checker *checker) {
-    return sf::Vector2f(round(checker->getPosition().x), round(checker->getPosition().y));
+    return checker->getPosition();
 }
 
 bool Game::checkValidMove() {
-    int checkerX = currentChecker->getPosition().x;
-    int checkerY = currentChecker->getPosition().y;
-    for(Checker* checker : checkers) {
-        if(checker->getPosition().x == round(checkerX) && checker->getPosition().y == round(checkerY)) {
-            return false;
-        }
-    }
-    if(currentChecker->getPlayer() == RED) {
-        if(checkerX > 0 && checkerX < WINDOW_WIDTH && checkerY > 0 && checkerY < WINDOW_HEIGHT) {
-            if(checkerX < lastCheckerPosition.x + 100 && checkerX > lastCheckerPosition.x - 100) {
-                if(checkerY > lastCheckerPosition.y + 25 && checkerY < lastCheckerPosition.y + 100) {
-                    return true;
-                }
-            }
-        }
-    }else {
-        return false;
-    }
+    return true;
 }
 
 
@@ -134,7 +117,7 @@ void Game::processMouseClick(sf::Event& e) {
     if(clickedChecker != nullptr) {
         currentChecker = clickedChecker;
         lastCheckerPosition = clickedChecker->getPosition();
-        clickedChecker->setPosition(posX - 25, posY - 25);
+        clickedChecker->setPosition(posX, posY);
     }
 }
 
@@ -142,13 +125,13 @@ void Game::processMouseMove(sf::Event& e) {
     int posX = e.mouseMove.x;
     int posY = e.mouseMove.y;
     if(currentChecker != nullptr) {
-        currentChecker->setPosition(posX - 25, posY - 25);
+        currentChecker->setPosition(posX, posY);
     }
 }
 
 bool Game::checkBounds(int mouseX, int mouseY, Checker* checker) {
-    if(mouseX <= checker->getPosition().x + BOARD_SQUARE_SIZE && mouseX >= checker->getPosition().x) {
-        if(mouseY <= checker->getPosition().y + BOARD_SQUARE_SIZE && mouseY >= checker->getPosition().y) {
+    if(mouseX <= checker->getPosition().x + CHECKER_RADIUS && mouseX >= checker->getPosition().x - CHECKER_RADIUS) {
+        if(mouseY <= checker->getPosition().y + CHECKER_RADIUS && mouseY >= checker->getPosition().y - CHECKER_RADIUS) {
             return true;
         }
     }
