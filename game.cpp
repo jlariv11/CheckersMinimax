@@ -50,6 +50,7 @@ void Game::initalizeBoard() {
             board[i][j] = i > 3 ? RED : BLACK;
         }
     }
+
     bool corner = false;
     int posX = BOARD_OFFSET_X + BOARD_SQUARE_SIZE*1.5;
     int posY = BOARD_OFFSET_Y + BOARD_SQUARE_SIZE/2;
@@ -60,6 +61,7 @@ void Game::initalizeBoard() {
             posX = (BOARD_OFFSET_X + BOARD_SQUARE_SIZE/2) + (corner ? 0 : BOARD_SQUARE_SIZE);
         }
         boardPositions[i] = sf::Vector2f(posX, posY);
+        std::cout << posX << " " << posY << std::endl;
         posX += BOARD_SQUARE_SIZE * 2;
     }
 
@@ -71,29 +73,63 @@ void Game::initalizeBoard() {
     }
 }
 int Game::round(int num) {
-    int remainder = num % 100;
-    if (remainder <= 25) {
-        // Closer to the lower multiple of 100
-        return (num / 100) * 100;
-    } else if (remainder >= 75) {
-        // Closer to the higher multiple of 100
-        return ((num / 100) + 1) * 100;
-    } else {
-        // Closer to the nearest 50
-        return (num / 100) * 100 + 50;
-    }
+    return ((num + 12) / 25) * 25;
 }
 
-sf::Vector2f Game::getClosestPosition(Checker *checker) {
-    return checker->getPosition();
+sf::Vector2f Game::getClosestPosition(Checker* checker) {
+    int x = round(checker->getPosition().x);
+    int y = round(checker->getPosition().y);
+    if(x % 10 == 0) {
+        if(checker->getPosition().x < x) {
+            x -= 25;
+        }else {
+            x += 25;
+        }
+    }
+    if(y % 10 == 0) {
+        if(checker->getPosition().y < y) {
+            y -= 25;
+        }else {
+            y += 25;
+        }
+    }
+    return sf::Vector2f(x, y);
 }
+
+Checker* Game::findCheckerAt(int x, int y) {
+    for(int i = 0; i < checkers.size(); i++) {
+        if(x <= checkers[i]->getPosition().x + CHECKER_RADIUS && x >= checkers[i]->getPosition().x - CHECKER_RADIUS) {
+            if(y <= checkers[i]->getPosition().y + CHECKER_RADIUS && y >= checkers[i]->getPosition().y - CHECKER_RADIUS) {
+                return checkers[i];
+            }
+        }
+    }
+    return nullptr;
+}
+
 
 bool Game::checkValidMove() {
-    return true;
+    int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
+    int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
+    float angle = atan2(deltaY, deltaX);
+    double distance = sqrt(deltaX * deltaX + deltaY * deltaY);
+    // Regular move: between 45 and 95
+    // Jump move: between 120 and 170
+    if(distance > 95) {
+        int xHalf = lastCheckerPosition.x + deltaX;
+        int yHalf = lastCheckerPosition.y + deltaY;
+        //std::cout << xHalf << std::endl;
+        //std::cout << yHalf << std::endl;
+        //std::cout << (findCheckerAt(xHalf, yHalf) != nullptr) << std::endl;
+    }
+    return (angle < -0.7 && angle > -2.5) && (distance > 45 && distance < 95);
 }
 
 
 void Game::processMouseClick(sf::Event& e) {
+    //std::cout << "Mouse" << std::endl;
+    //std::cout << e.mouseButton.x << std::endl;
+    //std::cout << e.mouseButton.y << std::endl;
     if(currentChecker != nullptr) {
         if(checkValidMove()) {
             sf::Vector2f pos = getClosestPosition(currentChecker);

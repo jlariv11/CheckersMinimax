@@ -4,6 +4,8 @@
 
 #include "ScreenManager.h"
 
+#include <iostream>
+
 #include "SFML/Graphics/CircleShape.hpp"
 #include "SFML/Graphics/Font.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
