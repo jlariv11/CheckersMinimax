@@ -9,13 +9,14 @@
 
 class Checker {
     public:
-    Checker();
-    Checker(Player player);
-    Checker(float x, float y, Player player);
+    Checker(int id);
+    Checker(Player player, int id);
+    Checker(float x, float y, Player player, int id);
     ~Checker();
     void draw();
     void setPosition(float x, float y);
     bool isKing();
+    int getID();
     sf::Vector2f getPosition();
     Player getPlayer();
 

@@ -66,10 +66,10 @@ void Game::initalizeBoard() {
     }
 
     for(int i = 0; i < 12; i++) {
-        checkers[i] = new Checker(boardPositions[i].x, boardPositions[i].y, RED);
+        checkers[i] = new Checker(boardPositions[i].x, boardPositions[i].y, RED, i);
     }
     for(int i = 20; i < 32; i++) {
-        checkers[i-8] = new Checker(boardPositions[i].x, boardPositions[i].y, BLACK);
+        checkers[i-8] = new Checker(boardPositions[i].x, boardPositions[i].y, BLACK, i);
     }
 }
 int Game::round(int num) {
@@ -96,8 +96,11 @@ sf::Vector2f Game::getClosestPosition(Checker* checker) {
     return sf::Vector2f(x, y);
 }
 
-Checker* Game::findCheckerAt(int x, int y) {
+Checker* Game::findCheckerAt(int x, int y, int ignoreID) {
     for(int i = 0; i < checkers.size(); i++) {
+        if(checkers[i]->getID() == ignoreID) {
+            continue;
+        }
         if(x <= checkers[i]->getPosition().x + CHECKER_RADIUS && x >= checkers[i]->getPosition().x - CHECKER_RADIUS) {
             if(y <= checkers[i]->getPosition().y + CHECKER_RADIUS && y >= checkers[i]->getPosition().y - CHECKER_RADIUS) {
                 return checkers[i];
@@ -109,6 +112,9 @@ Checker* Game::findCheckerAt(int x, int y) {
 
 
 bool Game::checkValidMove() {
+    if(findCheckerAt(currentChecker->getPosition().x, currentChecker->getPosition().y, currentChecker->getID()) != nullptr) {
+        return false;
+    }
     int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
     int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
     float angle = atan2(deltaY, deltaX);

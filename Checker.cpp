@@ -8,30 +8,38 @@
 #include "ScreenManager.h"
 #include "SFML/Graphics/CircleShape.hpp"
 
-Checker::Checker() {
+Checker::Checker(int id) {
     this->player = NONE;
     this->posX = 0;
     this->posY = 0;
     this->king = false;
+    this->checkerID = id;
 }
 
-Checker::Checker(Player player) {
+Checker::Checker(Player player, int id) {
     this->player = player;
     this->posX = 0;
     this->posY = 0;
     this->king = false;
+    this->checkerID = id;
 }
 
-Checker::Checker(float x, float y, Player player) {
+Checker::Checker(float x, float y, Player player, int id) {
     this->player = player;
     this->posX = x;
     this->posY = y;
     this->king = false;
+    this->checkerID = id;
 }
 
 Checker::~Checker() {
 
 }
+
+int Checker::getID() {
+    return this->checkerID;
+}
+
 
 void Checker::setPosition(float x, float y) {
     posX = x;
