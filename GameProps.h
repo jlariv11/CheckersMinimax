@@ -19,6 +19,7 @@ enum Player {
     NONE=-1
 };
 enum GameState {
+    STOPPED,
     IN_PROGRESS,
     RED_WIN,
     BLACK_WIN,

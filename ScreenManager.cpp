@@ -9,6 +9,7 @@
 #include "SFML/Graphics/CircleShape.hpp"
 #include "SFML/Graphics/Font.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
+#include "SFML/Graphics/Text.hpp"
 
 ScreenManager::ScreenManager() {
 
@@ -27,24 +28,53 @@ ScreenManager *ScreenManager::getInstance() {
 }
 
 void ScreenManager::start() {
-    sf::Font font;
     if(!font.loadFromFile("./pricedown/pricedown.otf")) {
         return;
     }
     window = new sf::RenderWindow(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Checkers Minimax");
-    drawScreen(std::vector<Checker*>());
+    drawScreen(std::vector<Checker*>(), NONE, STOPPED);
 }
 
 sf::RenderWindow *ScreenManager::getWindow() {
     return window;
 }
 
-void ScreenManager::drawScreen(std::vector<Checker*> checkers) {
+void ScreenManager::drawScreen(std::vector<Checker*> checkers, Player currentPlayer, GameState gameState) {
     window->clear(sf::Color::White);
     drawBackground();
     drawCheckers(checkers);
+    drawInfo(currentPlayer, gameState);
     window->display();
 }
+
+void ScreenManager::drawInfo(Player currentPlayer, GameState gameState) {
+    sf::Text text;
+    text.setFont(font);
+    switch(gameState) {
+        case IN_PROGRESS:
+            text.setString(currentPlayer == RED ? "Red's Turn" : "Black's Turn");
+        break;
+        case RED_WIN:
+            text.setString("Red Wins!");
+        break;
+        case BLACK_WIN:
+            text.setString("Black Wins!");
+        break;
+        case DRAW:
+            text.setString("Draw!");
+        break;
+        default:
+            text.setString("");
+        break;
+    }
+    text.setPosition(WINDOW_WIDTH / 2, 30);
+    text.setCharacterSize(40);
+    text.setOrigin(text.getLocalBounds().width / 2, text.getLocalBounds().height / 2);
+    text.setFillColor(sf::Color::Black);
+    window->draw(text);
+
+}
+
 
 void ScreenManager::drawCheckers(std::vector<Checker*> checkers) {
     for(int i = 0; i < checkers.size(); i++) {

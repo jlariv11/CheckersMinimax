@@ -301,6 +301,7 @@ void Game::onCheckerMove(sf::Vector2f from, sf::Vector2f to, Checker *checker) {
     if(to.y == 475 && !checker->isKing()) {
         checker->setKing();
     }
+    //checkGameState();
 }
 
 
@@ -352,9 +353,8 @@ void Game::run() {
         // Check Game State
         //checkGameState();
 
-
         // Render
-        screenManager->drawScreen(checkers);
+        screenManager->drawScreen(checkers, currentPlayer, gameState);
 
         currentTime = sf::Clock().getElapsedTime().asMilliseconds();
         long deltaTime = currentTime - startTime;
@@ -367,31 +367,6 @@ void Game::run() {
         if(adjustTime < 0) {
             adjustTime = 0;
         }
-
-        /*
-        sf::Text text;
-        //text.setFont(font);
-        switch (gameState){
-            case RED_WIN:
-                text.setString("Red Win!");
-            break;
-            case BLACK_WIN:
-                text.setString("Black Win!");
-            break;
-            case DRAW:
-                text.setString("Draw");
-            break;
-            default:
-                text.setString("Game Over!");
-            break;
-        }
-        text.setCharacterSize(40);
-        text.setColor(sf::Color::White);
-        text.setPosition(sf::Vector2f(360, 260));
-        //window.clear();
-        //window.draw(text);
-        //window.display();
-        */
     }
 }
 
