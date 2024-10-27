@@ -32,8 +32,9 @@ private:
     void processMouseClick(sf::Event& e);
     void processMouseMove(sf::Event& e);
     bool checkBounds(int mouseX, int mouseY, Checker* checker);
-    bool checkValidMove();
-    Checker* findCheckerAt(int x, int y, int ignoreID);
+    int checkValidMove();
+    int* worldToBoard(sf::Vector2f coordinate);
+    bool checkerAt(int x, int y, Player color);
     sf::Vector2f getClosestPosition(Checker* checker);
     int round(int num);
     bool checkWin(Player player);

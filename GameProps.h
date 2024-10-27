@@ -5,7 +5,7 @@
 #ifndef GAMEPROPS_H
 #define GAMEPROPS_H
 
-#define BOARD_WIDTH 4
+#define BOARD_WIDTH 8
 #define BOARD_HEIGHT 8
 #define BOARD_OFFSET_X 200
 #define BOARD_OFFSET_Y 100
@@ -24,5 +24,16 @@ enum GameState {
     BLACK_WIN,
     DRAW
 };
+
+Player getOpposite(Player p) {
+    switch(p) {
+        case RED:
+            return BLACK;
+        case BLACK:
+            return RED;
+        default:
+            return NONE;
+    }
+}
 
 #endif //GAMEPROPS_H
