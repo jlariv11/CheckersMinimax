@@ -88,7 +88,7 @@ sf::Vector2i Game::getClosestPosition(Checker* checker) {
     return {x, y};
 }
 
-bool Game::checkerAt(int x, int y, Player color) const {
+bool Game::checkerAt(int x, int y, Player ignore) const {
     int xNormal = round(x);
     int yNormal = round(y);
     int* boardPos = worldToBoard(sf::Vector2i(xNormal, yNormal));
@@ -100,7 +100,7 @@ bool Game::checkerAt(int x, int y, Player color) const {
         free(boardPos);
         return false;
     }
-    if(board[boardPos[1]][boardPos[0]] != color){
+    if(board[boardPos[1]][boardPos[0]] != ignore){
         free(boardPos);
         return true;
     }
@@ -205,47 +205,8 @@ void Game::processMouseClick(const sf::Event& e) {
                     checkers.erase(checkers.begin() + i);
                     onPieceCapture();
                     onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
-                    int checkerX = currentChecker->getPosition().x;
-                    int checkerY = currentChecker->getPosition().y;
-                    std::vector<sf::Vector2i> jumpPositions{};
-                    std::vector<sf::Vector2i> possibleJumps{};
 
-                    if(currentChecker->isKing()) {
-                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
-                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
-                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
-                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
-
-                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
-                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
-                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
-                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
-                    }else if(currentChecker->getPlayer() == BLACK) {
-                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
-                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
-                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
-                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
-                    }else if(currentChecker->getPlayer() == RED) {
-                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
-                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
-                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
-                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
-                    }
-
-                    bool hasJump = false;
-                    for(int j = 0; j < jumpPositions.size(); j++) {
-                        if(jumpPositions[j].x < 275 || jumpPositions[j].x > 525 || possibleJumps[j].x < 275 || possibleJumps[j].x > 525) {
-                            continue;
-                        }
-                        if(jumpPositions[j].y < 125 || jumpPositions[j].y > 475 || possibleJumps[j].y < 125 || possibleJumps[j].y > 475) {
-                            continue;
-                        }
-                        if(checkerAt(jumpPositions[j].x, jumpPositions[j].y, currentPlayer) && !checkerAt(possibleJumps[j].x, possibleJumps[j].y, NONE)) {
-                            hasJump = true;
-                            break;
-                        }
-                    }
-                    if(hasJump) {
+                    if(hasMoves(currentChecker, true)) {
                         isJumpingTurn = true;
                         jumpingChecker = currentChecker;
                         currentChecker = nullptr;
@@ -400,7 +361,6 @@ void Game::checkGameState() {
                 bool isSame = true;
                 for(int i = 0; i < BOARD_HEIGHT; i++){
                     for(int j = 0; j < BOARD_WIDTH; j++){
-                        std::cout << currentBoard[i][j] << " " << b[i][j] << std::endl;
                         if(currentBoard[i][j] != b[i][j]){
                             isSame = false;
                             break;
@@ -422,6 +382,7 @@ void Game::checkGameState() {
             }
         }
     }
+
     if(checkWin(RED)){
         gameState = RED_WIN;
         return;
@@ -430,7 +391,70 @@ void Game::checkGameState() {
         gameState = BLACK_WIN;
         return;
     }
+    bool canMove = false;
+    for(Checker* c : checkers) {
+        if(c->getPlayer() != getOpposite(currentPlayer)) {
+            continue;
+        }
+        if(hasMoves(c, false)) {
+            canMove = true;
+            break;
+        }
+    }
+    if(!canMove) {
+        gameState = getOpposite(currentPlayer) == RED ? BLACK_WIN : RED_WIN;
+    }
 }
+
+bool Game::hasMoves(Checker* checker, bool onlyJump) const {
+    int checkerX = checker->getPosition().x;
+    int checkerY = checker->getPosition().y;
+    std::vector<sf::Vector2i> jumpPositions{};
+    std::vector<sf::Vector2i> possibleJumps{};
+
+    if(checker->isKing()) {
+        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+
+        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
+        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
+    }else if(checker->getPlayer() == BLACK) {
+        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
+        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
+    }else if(checker->getPlayer() == RED) {
+        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+    }
+
+    for(int j = 0; j < jumpPositions.size(); j++) {
+        if(jumpPositions[j].x < 275 || jumpPositions[j].x > 525 || possibleJumps[j].x < 275 || possibleJumps[j].x > 525) {
+            continue;
+        }
+        if(jumpPositions[j].y < 125 || jumpPositions[j].y > 475 || possibleJumps[j].y < 125 || possibleJumps[j].y > 475) {
+            continue;
+        }
+        if(onlyJump) {
+            if(checkerAt(jumpPositions[j].x, jumpPositions[j].y, currentPlayer) && !checkerAt(possibleJumps[j].x, possibleJumps[j].y, NONE)) {
+                return true;
+            }
+        }else {
+             if(!checkerAt(jumpPositions[j].x, jumpPositions[j].y, NONE) || (checkerAt(jumpPositions[j].x, jumpPositions[j].y, getOpposite(currentPlayer)) && !checkerAt(possibleJumps[j].x, possibleJumps[j].y, NONE))) {
+                 return true;
+             }
+        }
+    }
+
+    return false;
+}
+
 
 bool Game::checkWin(Player player) const {
     int redCount = 0;
