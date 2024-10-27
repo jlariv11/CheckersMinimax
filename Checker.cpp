@@ -54,8 +54,13 @@ Player Checker::getPlayer() {
 }
 
 bool Checker::isKing() {
-    return king;
+    return true;
 }
+
+void Checker::setKing() {
+    king = true;
+}
+
 
 
 void Checker::draw() {
@@ -64,6 +69,14 @@ void Checker::draw() {
     shape.setFillColor(player == RED ? sf::Color::Red : sf::Color::Black);
     shape.setOrigin(CHECKER_RADIUS, CHECKER_RADIUS);
     ScreenManager::getInstance()->getWindow()->draw(shape);
+    if(isKing()) {
+        sf::CircleShape shape1(CHECKER_RADIUS - 10);
+        shape1.setPosition(posX, posY);
+        shape1.setFillColor(sf::Color::Yellow);
+        shape1.setOrigin(CHECKER_RADIUS - 10, CHECKER_RADIUS - 10);
+        ScreenManager::getInstance()->getWindow()->draw(shape1);
+    }
+
 }
 
 

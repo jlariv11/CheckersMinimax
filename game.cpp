@@ -51,14 +51,6 @@ void Game::initalizeBoard() {
         red = !red;
     }
 
-    /*
-    for(int i = 0; i < BOARD_HEIGHT; i++) {
-        for(int j = 0; j < BOARD_WIDTH; j++) {
-            std::cout << board[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-    */
 
     bool corner = false;
     int posX = BOARD_OFFSET_X + BOARD_SQUARE_SIZE*1.5;
@@ -70,7 +62,6 @@ void Game::initalizeBoard() {
             posX = (BOARD_OFFSET_X + BOARD_SQUARE_SIZE/2) + (corner ? 0 : BOARD_SQUARE_SIZE);
         }
         boardPositions[i] = sf::Vector2f(posX, posY);
-        ///std::cout << posX << " " << posY << std::endl;
         posX += BOARD_SQUARE_SIZE * 2;
     }
 
@@ -103,7 +94,6 @@ bool Game::checkerAt(int x, int y, Player color) {
     int xNormal = round(x);
     int yNormal = round(y);
     int* boardPos = worldToBoard(sf::Vector2f(xNormal, yNormal));
-    std::cout << boardPos[0] << " " << boardPos[1] << std::endl;
     if(board[boardPos[1]][boardPos[0]] == NONE) {
         free(boardPos);
         return false;
@@ -128,12 +118,32 @@ int Game::checkValidMove() {
     if(distance > 120 && distance < 170) {
         int xHalf = lastCheckerPosition.x - (deltaX / 2);
         int yHalf = lastCheckerPosition.y - (deltaY/2);
-        if(angle < -0.7 && angle > -2.5 && checkerAt(xHalf, yHalf, BLACK)) {
-            return 1;
+        if(currentPlayer == BLACK) {
+            if(angle > 0.7 && angle < 2.5 && checkerAt(xHalf, yHalf, currentPlayer)) {
+                return 1;
+            }
+        }else if(currentPlayer == RED) {
+            if(angle < -0.7 && angle > -2.5 && checkerAt(xHalf, yHalf, currentPlayer)) {
+                return 1;
+            }
+        }else if(currentChecker->isKing()) {
+            if(((angle < -0.7 && angle > -2.5) || (angle > 0.7 && angle < 2.5)) && checkerAt(xHalf, yHalf, currentPlayer)) {
+                return 1;
+            }
         }
     }
-    if(angle < -0.7 && angle > -2.5 && distance > 45 && distance < 95){
-        return 0;
+    if(currentPlayer == BLACK && !currentChecker->isKing()) {
+        if(angle > 0.7 && angle < 2.5 && distance > 45 && distance < 95) {
+            return 0;
+        }
+    }else if(currentPlayer == RED && !currentChecker->isKing()) {
+        if(angle < -0.7 && angle > -2.5 && distance > 45 && distance < 95) {
+            return 0;
+        }
+    }else if(currentChecker->isKing()) {
+        if(((angle < -0.7 && angle > -2.5) || (angle > 0.7 && angle < 2.5)) && distance > 45 && distance < 95) {
+            return 0;
+        }
     }
     return -1;
 }
@@ -166,6 +176,7 @@ void Game::processMouseClick(sf::Event& e) {
             free(currentPos);
 
         }else if(validMove == 1) {
+            //TODO: CHECK FOR OTHER JUMPS ELSE END TURN
             int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
             int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
             sf::Vector2f pos = getClosestPosition(currentChecker);
@@ -186,7 +197,12 @@ void Game::processMouseClick(sf::Event& e) {
                 if(checkers[i]->getPosition().x == round(xHalf) && checkers[i]->getPosition().y == round(yHalf)) {
                     checkers.erase(checkers.begin() + i);
                     onPieceCapture();
-                    break;
+                    onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
+                    currentChecker = nullptr;
+                    free(checkerToRemove);
+                    free(prevPos);
+                    free(currentPos);
+                    return;
                 }
             }
 
@@ -196,10 +212,11 @@ void Game::processMouseClick(sf::Event& e) {
         }else {
             currentChecker->setPosition(lastCheckerPosition.x, lastCheckerPosition.y);
         }
-        currentChecker = nullptr;
         if(validMove != -1) {
-            currentPlayer = getOpposite(currentPlayer);
+            onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
+            onTurnChange();
         }
+        currentChecker = nullptr;
         return;
     }
     int posX = e.mouseButton.x;
@@ -225,6 +242,19 @@ void Game::processMouseMove(sf::Event& e) {
         currentChecker->setPosition(posX, posY);
     }
 }
+
+void Game::onTurnChange() {
+    currentPlayer = getOpposite(currentPlayer);
+    movesSinceLastCapture++;
+    statesSinceLastCapture.push_back(board);
+}
+
+void Game::onCheckerMove(sf::Vector2f from, sf::Vector2f to, Checker *checker) {
+    if(to.y == 475 && !checker->isKing()) {
+        checker->setKing();
+    }
+}
+
 
 bool Game::checkBounds(int mouseX, int mouseY, Checker* checker) {
     if(mouseX <= checker->getPosition().x + CHECKER_RADIUS && mouseX >= checker->getPosition().x - CHECKER_RADIUS) {
@@ -290,7 +320,7 @@ void Game::run() {
             adjustTime = 0;
         }
 
-
+        /*
         sf::Text text;
         //text.setFont(font);
         switch (gameState){
@@ -313,6 +343,7 @@ void Game::run() {
         //window.clear();
         //window.draw(text);
         //window.display();
+        */
     }
 }
 

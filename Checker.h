@@ -16,6 +16,7 @@ class Checker {
     void draw();
     void setPosition(float x, float y);
     bool isKing();
+    void setKing();
     int getID();
     sf::Vector2f getPosition();
     Player getPlayer();

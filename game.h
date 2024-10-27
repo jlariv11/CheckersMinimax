@@ -28,6 +28,8 @@ private:
     int movesSinceLastCapture;
     void initalizeBoard();
     void onPieceCapture();
+    void onTurnChange();
+    void onCheckerMove(sf::Vector2f from, sf::Vector2f to, Checker* checker);
     void checkGameState();
     void processMouseClick(sf::Event& e);
     void processMouseMove(sf::Event& e);

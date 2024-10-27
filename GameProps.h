@@ -25,7 +25,7 @@ enum GameState {
     DRAW
 };
 
-Player getOpposite(Player p) {
+inline Player getOpposite(Player p) {
     switch(p) {
         case RED:
             return BLACK;
