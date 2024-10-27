@@ -11,21 +11,21 @@ class Checker {
     public:
     Checker(int id);
     Checker(Player player, int id);
-    Checker(float x, float y, Player player, int id);
+    Checker(int x, int y, Player player, int id);
     ~Checker();
-    void draw();
-    void setPosition(float x, float y);
-    bool isKing();
+    void draw() const;
+    void setPosition(int x, int y);
+    bool isKing() const;
     void setKing();
-    int getID();
-    sf::Vector2f getPosition();
-    Player getPlayer();
+    int getID() const;
+    sf::Vector2i getPosition() const;
+    Player getPlayer() const;
 
 private:
     int checkerID;
     Player player;
-    float posX;
-    float posY;
+    int posX;
+    int posY;
     bool king;
 };
 

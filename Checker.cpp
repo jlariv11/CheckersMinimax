@@ -24,7 +24,7 @@ Checker::Checker(Player player, int id) {
     this->checkerID = id;
 }
 
-Checker::Checker(float x, float y, Player player, int id) {
+Checker::Checker(int x, int y, Player player, int id) {
     this->player = player;
     this->posX = x;
     this->posY = y;
@@ -32,28 +32,26 @@ Checker::Checker(float x, float y, Player player, int id) {
     this->checkerID = id;
 }
 
-Checker::~Checker() {
+Checker::~Checker() = default;
 
-}
-
-int Checker::getID() {
+int Checker::getID() const {
     return this->checkerID;
 }
 
 
-void Checker::setPosition(float x, float y) {
+void Checker::setPosition(int x, int y) {
     posX = x;
     posY = y;
 }
 
-sf::Vector2f Checker::getPosition() {
-    return sf::Vector2f(posX, posY);
+sf::Vector2i Checker::getPosition() const {
+    return {posX, posY};
 }
-Player Checker::getPlayer() {
+Player Checker::getPlayer() const {
     return player;
 }
 
-bool Checker::isKing() {
+bool Checker::isKing() const {
     return king;
 }
 
@@ -63,7 +61,7 @@ void Checker::setKing() {
 
 
 
-void Checker::draw() {
+void Checker::draw() const {
     sf::CircleShape shape(CHECKER_RADIUS);
     shape.setPosition(posX, posY);
     shape.setFillColor(player == RED ? sf::Color::Red : sf::Color::Black);

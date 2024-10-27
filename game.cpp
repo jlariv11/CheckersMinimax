@@ -1,15 +1,9 @@
 #include <iostream>
 #include "game.h"
 
-#include <iomanip>
 #include <sfml/Window.hpp>
-
 #include "Checker.h"
-#include "SFML/Graphics/CircleShape.hpp"
-#include "SFML/Graphics/Font.hpp"
-#include "SFML/Graphics/RectangleShape.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
-#include "SFML/Graphics/Text.hpp"
 #include "ScreenManager.h"
 
 Game::Game() {
@@ -21,8 +15,11 @@ Game::Game() {
     gameState = IN_PROGRESS;
     movesSinceLastCapture = 0;
     statesSinceLastCapture = std::vector<int**>();
-    boardPositions = std::vector<sf::Vector2f>(32);
+    boardPositions = std::vector<sf::Vector2i>(32);
     checkers = std::vector<Checker*>(24);
+    isJumpingTurn = false;
+    jumpingChecker = nullptr;
+    currentChecker = nullptr;
 }
 
 Game::~Game() {
@@ -32,7 +29,7 @@ Game::~Game() {
     free(board);
 }
 
-void Game::initalizeBoard() {
+void Game::initializeBoard() {
     bool red = true;
     for(int i = 0; i < BOARD_HEIGHT; i++){
         for(int j = 0; j < BOARD_WIDTH; j++){
@@ -61,7 +58,8 @@ void Game::initalizeBoard() {
             posY += BOARD_SQUARE_SIZE;
             posX = (BOARD_OFFSET_X + BOARD_SQUARE_SIZE/2) + (corner ? 0 : BOARD_SQUARE_SIZE);
         }
-        boardPositions[i] = sf::Vector2f(posX, posY);
+        boardPositions[i] = sf::Vector2i(posX, posY);
+        std::cout << boardPositions[i].x << " " << boardPositions[i].y << std::endl;
         posX += BOARD_SQUARE_SIZE * 2;
     }
 
@@ -84,16 +82,16 @@ int Game::round(int num) {
     return rounded;
 }
 
-sf::Vector2f Game::getClosestPosition(Checker* checker) {
+sf::Vector2i Game::getClosestPosition(Checker* checker) {
     int x = round(checker->getPosition().x);
     int y = round(checker->getPosition().y);
-    return sf::Vector2f(x, y);
+    return {x, y};
 }
 
-bool Game::checkerAt(int x, int y, Player color) {
+bool Game::checkerAt(int x, int y, Player color) const {
     int xNormal = round(x);
     int yNormal = round(y);
-    int* boardPos = worldToBoard(sf::Vector2f(xNormal, yNormal));
+    int* boardPos = worldToBoard(sf::Vector2i(xNormal, yNormal));
     if(boardPos[0] > 7 || boardPos[1] > 7) {
         free(boardPos);
         return true;
@@ -109,7 +107,7 @@ bool Game::checkerAt(int x, int y, Player color) {
     return false;
 }
 
-int Game::checkValidMove() {
+int Game::checkValidMove() const {
     if(checkerAt(currentChecker->getPosition().x, currentChecker->getPosition().y, NONE)) {
         return -1;
     }
@@ -118,7 +116,7 @@ int Game::checkValidMove() {
     }
     int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
     int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
-    float angle = atan2(deltaY, deltaX);
+    double angle = atan2(deltaY, deltaX);
     double distance = sqrt(deltaX * deltaX + deltaY * deltaY);
     // Regular move: between 45 and 95
     // Jump move: between 120 and 170
@@ -158,23 +156,23 @@ int Game::checkValidMove() {
     return -1;
 }
 
-int* Game::worldToBoard(sf::Vector2f coordinate) {
+int* Game::worldToBoard(sf::Vector2i coordinate) {
     // 225 px is 0th column
     int x = (coordinate.x - 225) / BOARD_SQUARE_SIZE;
     // 125 px is 0th row
     int y = (coordinate.y - 125) / BOARD_SQUARE_SIZE;
-    int* board = (int*)malloc(sizeof(int) * 2);
+    int* board = static_cast<int *>(malloc(sizeof(int) * 2));
     board[0] = x;
     board[1] = y;
     return board;
 }
 
 
-void Game::processMouseClick(sf::Event& e) {
+void Game::processMouseClick(const sf::Event& e) {
     if(currentChecker != nullptr) {
         int validMove = checkValidMove();
         if(validMove == 0) {
-            sf::Vector2f pos = getClosestPosition(currentChecker);
+            sf::Vector2i pos = getClosestPosition(currentChecker);
             currentChecker->setPosition(pos.x, pos.y);
             int* prevPos = worldToBoard(lastCheckerPosition);
             int* currentPos = worldToBoard(pos);
@@ -188,7 +186,7 @@ void Game::processMouseClick(sf::Event& e) {
         }else if(validMove == 1) {
             int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
             int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
-            sf::Vector2f pos = getClosestPosition(currentChecker);
+            sf::Vector2i pos = getClosestPosition(currentChecker);
             currentChecker->setPosition(pos.x, pos.y);
             int* prevPos = worldToBoard(lastCheckerPosition);
             int* currentPos = worldToBoard(pos);
@@ -199,7 +197,7 @@ void Game::processMouseClick(sf::Event& e) {
             int xHalf = lastCheckerPosition.x - (deltaX / 2);
             int yHalf = lastCheckerPosition.y - (deltaY/2);
 
-            int* checkerToRemove = worldToBoard(sf::Vector2f(round(xHalf), round(yHalf)));
+            int* checkerToRemove = worldToBoard(sf::Vector2i(round(xHalf), round(yHalf)));
 
             board[checkerToRemove[1]][checkerToRemove[0]] = NONE;
             for(int i = 0; i < checkers.size(); i++) {
@@ -209,34 +207,40 @@ void Game::processMouseClick(sf::Event& e) {
                     onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
                     int checkerX = currentChecker->getPosition().x;
                     int checkerY = currentChecker->getPosition().y;
-                    std::vector<sf::Vector2f> jumpPositions{};
-                    std::vector<sf::Vector2f> possibleJumps{};
+                    std::vector<sf::Vector2i> jumpPositions{};
+                    std::vector<sf::Vector2i> possibleJumps{};
 
                     if(currentChecker->isKing()) {
-                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
-                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
-                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
-                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
+                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
 
-                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
-                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
-                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
-                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
+                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
+                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
                     }else if(currentChecker->getPlayer() == BLACK) {
-                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
-                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
-                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
-                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
+                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
+                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
+                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE);
                     }else if(currentChecker->getPlayer() == RED) {
-                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
-                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
-                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
-                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
+                        possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+                        possibleJumps.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2);
+                        jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
+                        jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE);
                     }
 
                     bool hasJump = false;
-                    for(int i = 0; i < jumpPositions.size(); i++) {
-                        if(checkerAt(jumpPositions[i].x, jumpPositions[i].y, currentPlayer) && !checkerAt(possibleJumps[i].x, possibleJumps[i].y, NONE)) {
+                    for(int j = 0; j < jumpPositions.size(); j++) {
+                        if(jumpPositions[j].x < 275 || jumpPositions[j].x > 525 || possibleJumps[j].x < 275 || possibleJumps[j].x > 525) {
+                            continue;
+                        }
+                        if(jumpPositions[j].y < 125 || jumpPositions[j].y > 475 || possibleJumps[j].y < 125 || possibleJumps[j].y > 475) {
+                            continue;
+                        }
+                        if(checkerAt(jumpPositions[j].x, jumpPositions[j].y, currentPlayer) && !checkerAt(possibleJumps[j].x, possibleJumps[j].y, NONE)) {
                             hasJump = true;
                             break;
                         }
@@ -270,9 +274,9 @@ void Game::processMouseClick(sf::Event& e) {
     int posX = e.mouseButton.x;
     int posY = e.mouseButton.y;
     Checker* clickedChecker = nullptr;
-    for(int i = 0; i < checkers.size(); i++) {
-        if(checkBounds(posX, posY, checkers[i]) && checkers[i]->getPlayer() == currentPlayer) {
-            clickedChecker = checkers[i];
+    for(Checker* checker : checkers) {
+        if(checkBounds(posX, posY, checker) && checker->getPlayer() == currentPlayer) {
+            clickedChecker = checker;
             break;
         }
     }
@@ -283,7 +287,7 @@ void Game::processMouseClick(sf::Event& e) {
     }
 }
 
-void Game::processMouseMove(sf::Event& e) {
+void Game::processMouseMove(const sf::Event& e) const {
     int posX = e.mouseMove.x;
     int posY = e.mouseMove.y;
     if(currentChecker != nullptr) {
@@ -297,11 +301,11 @@ void Game::onTurnChange() {
     statesSinceLastCapture.push_back(board);
 }
 
-void Game::onCheckerMove(sf::Vector2f from, sf::Vector2f to, Checker *checker) {
+void Game::onCheckerMove(sf::Vector2i from, sf::Vector2i to, Checker *checker) {
     if(to.y == 475 && !checker->isKing()) {
         checker->setKing();
     }
-    //checkGameState();
+    checkGameState();
 }
 
 
@@ -315,14 +319,12 @@ bool Game::checkBounds(int mouseX, int mouseY, Checker* checker) {
 }
 
 void Game::run() {
-    initalizeBoard();
+    initializeBoard();
     ScreenManager *screenManager = ScreenManager::getInstance();
     screenManager->start();
-    long startTime;
-    long currentTime;
-    long adjustTime;
-    while(screenManager->getWindow()->isOpen() && gameState == IN_PROGRESS) {
-        startTime = sf::Clock().getElapsedTime().asMilliseconds();
+    int adjustTime = 0;
+    while(screenManager->getWindow()->isOpen()) {
+        int startTime = sf::Clock().getElapsedTime().asMilliseconds();
 
         // Events(Input)
         sf::Event event;
@@ -340,25 +342,13 @@ void Game::run() {
                 processMouseMove(event);
             }
         }
-        // Process Input
-
-        // Player Turn these need to happen when a turn is confirmed
-        movesSinceLastCapture++;
-        statesSinceLastCapture.push_back(board);
-        // Check Game State
-        //checkGameState();
-        // AI turn
-        movesSinceLastCapture++;
-        statesSinceLastCapture.push_back(board);
-        // Check Game State
-        //checkGameState();
 
         // Render
         screenManager->drawScreen(checkers, currentPlayer, gameState);
 
-        currentTime = sf::Clock().getElapsedTime().asMilliseconds();
-        long deltaTime = currentTime - startTime;
-        long intendedSleepTime = 33 - deltaTime - adjustTime;
+        int currentTime = sf::Clock().getElapsedTime().asMilliseconds();
+        int deltaTime = currentTime - startTime;
+        int intendedSleepTime = 33 - deltaTime - adjustTime;
         if(intendedSleepTime < 0) {
             intendedSleepTime = 0;
         }
@@ -380,36 +370,40 @@ void Game::checkGameState() {
         gameState = DRAW;
         return;
     }
+/*
     std::vector<int**> statesCopy = statesSinceLastCapture;
-    int** currentBoard = statesCopy.back();
-    statesCopy.pop_back();
-    int sameBoardCount = 0;
-    while(!statesCopy.empty()){
-        for(int** b : statesSinceLastCapture){
-            bool isSame = true;
-            for(int i = 0; i < BOARD_HEIGHT; i++){
-                for(int j = 0; j < BOARD_WIDTH; j++){
-                    if(!currentBoard[i][j] == b[i][j]){
-                        isSame = false;
-                        break;
-                    }
-                    if(!isSame){
-                        break;
+    if (!statesCopy.empty()) {
+        int** currentBoard = statesCopy.back();
+        statesCopy.pop_back();
+        while(!statesCopy.empty()){
+            int sameBoardCount = 0;
+            for(int** b : statesSinceLastCapture){
+                bool isSame = true;
+                for(int i = 0; i < BOARD_HEIGHT; i++){
+                    for(int j = 0; j < BOARD_WIDTH; j++){
+                        std::cout << currentBoard[i][j] << " " << b[i][j] << std::endl;
+                        if(currentBoard[i][j] != b[i][j]){
+                            isSame = false;
+                            break;
+                        }
+                        if(!isSame){
+                            break;
+                        }
                     }
                 }
+                if(isSame){
+                    sameBoardCount++;
+                }
             }
-            if(isSame){
-                sameBoardCount++;
+            currentBoard = statesCopy.back();
+            statesCopy.pop_back();
+            if(sameBoardCount >= 3){
+                gameState = DRAW;
+                return;
             }
-        }
-        currentBoard = statesCopy.back();
-        statesCopy.pop_back();
-        if(sameBoardCount >= 3){
-            gameState = DRAW;
-            return;
         }
     }
-
+*/
     if(checkWin(RED)){
         gameState = RED_WIN;
         return;
@@ -420,7 +414,7 @@ void Game::checkGameState() {
     }
 }
 
-bool Game::checkWin(Player player) {
+bool Game::checkWin(Player player) const {
     int redCount = 0;
     int blackCount = 0;
     for(int i = 0; i < BOARD_HEIGHT; i++){

@@ -12,9 +12,9 @@
 class ScreenManager {
     public:
     static ScreenManager* getInstance();
-    void drawScreen(std::vector<Checker*> checkers, Player currentPlayer, GameState gameState);
+    void drawScreen(const std::vector<Checker*>& checkers, Player currentPlayer, GameState gameState) const;
     void start();
-    sf::RenderWindow* getWindow();
+    sf::RenderWindow* getWindow() const;
     ScreenManager(const ScreenManager&) = delete;
     ScreenManager& operator=(const ScreenManager&) = delete;
 
@@ -23,9 +23,9 @@ class ScreenManager {
     ~ScreenManager();
     sf::RenderWindow* window;
     sf::Font font;
-    void drawBackground();
-    void drawInfo(Player currentPlayer, GameState gameState);
-    void drawCheckers(std::vector<Checker*> checkers);
+    void drawBackground() const;
+    void drawInfo(Player currentPlayer, GameState gameState) const;
+    static void drawCheckers(const std::vector<Checker*> &checkers);
 };
 
 #endif //SCREENMANAGER_H

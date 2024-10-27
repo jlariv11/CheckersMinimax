@@ -3,21 +3,13 @@
 //
 
 #include "ScreenManager.h"
-
-#include <iostream>
-
-#include "SFML/Graphics/CircleShape.hpp"
 #include "SFML/Graphics/Font.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
 #include "SFML/Graphics/Text.hpp"
 
-ScreenManager::ScreenManager() {
+ScreenManager::ScreenManager() = default;
 
-}
-
-ScreenManager::~ScreenManager() {
-
-}
+ScreenManager::~ScreenManager() = default;
 
 ScreenManager *ScreenManager::getInstance() {
     static ScreenManager* instance;
@@ -35,11 +27,11 @@ void ScreenManager::start() {
     drawScreen(std::vector<Checker*>(), NONE, STOPPED);
 }
 
-sf::RenderWindow *ScreenManager::getWindow() {
+sf::RenderWindow *ScreenManager::getWindow() const {
     return window;
 }
 
-void ScreenManager::drawScreen(std::vector<Checker*> checkers, Player currentPlayer, GameState gameState) {
+void ScreenManager::drawScreen(const std::vector<Checker*>& checkers, Player currentPlayer, GameState gameState) const {
     window->clear(sf::Color::White);
     drawBackground();
     drawCheckers(checkers);
@@ -47,7 +39,7 @@ void ScreenManager::drawScreen(std::vector<Checker*> checkers, Player currentPla
     window->display();
 }
 
-void ScreenManager::drawInfo(Player currentPlayer, GameState gameState) {
+void ScreenManager::drawInfo(Player currentPlayer, GameState gameState) const {
     sf::Text text;
     text.setFont(font);
     switch(gameState) {
@@ -76,14 +68,14 @@ void ScreenManager::drawInfo(Player currentPlayer, GameState gameState) {
 }
 
 
-void ScreenManager::drawCheckers(std::vector<Checker*> checkers) {
-    for(int i = 0; i < checkers.size(); i++) {
-        checkers[i]->draw();
+void ScreenManager::drawCheckers(const std::vector<Checker*> &checkers) {
+    for(auto checker : checkers) {
+        checker->draw();
     }
 }
 
 
-void ScreenManager::drawBackground() {
+void ScreenManager::drawBackground() const {
     bool red = true;
     int posX = BOARD_OFFSET_X;
     int posY = BOARD_OFFSET_Y;
@@ -94,7 +86,7 @@ void ScreenManager::drawBackground() {
     for(int i = 0; i < 8; i++) {
         for(int j = 0; j < 8; j++) {
             sf::RectangleShape rect(sf::Vector2f(BOARD_SQUARE_SIZE, BOARD_SQUARE_SIZE));
-            rect.setPosition(sf::Vector2f(posX, posY));
+            rect.setPosition(posX, posY);
             rect.setFillColor(red ? sf::Color::White : sf::Color::Blue);
             window->draw(rect);
             red = !red;
