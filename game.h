@@ -25,6 +25,8 @@ private:
     std::vector<int**> statesSinceLastCapture;
     Checker* currentChecker;
     sf::Vector2f lastCheckerPosition;
+    bool isJumpingTurn;
+    Checker* jumpingChecker;
     int movesSinceLastCapture;
     void initalizeBoard();
     void onPieceCapture();

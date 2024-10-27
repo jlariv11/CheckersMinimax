@@ -54,7 +54,7 @@ Player Checker::getPlayer() {
 }
 
 bool Checker::isKing() {
-    return true;
+    return king;
 }
 
 void Checker::setKing() {

@@ -94,6 +94,10 @@ bool Game::checkerAt(int x, int y, Player color) {
     int xNormal = round(x);
     int yNormal = round(y);
     int* boardPos = worldToBoard(sf::Vector2f(xNormal, yNormal));
+    if(boardPos[0] > 7 || boardPos[1] > 7) {
+        free(boardPos);
+        return true;
+    }
     if(board[boardPos[1]][boardPos[0]] == NONE) {
         free(boardPos);
         return false;
@@ -107,7 +111,10 @@ bool Game::checkerAt(int x, int y, Player color) {
 
 int Game::checkValidMove() {
     if(checkerAt(currentChecker->getPosition().x, currentChecker->getPosition().y, NONE)) {
-        return false;
+        return -1;
+    }
+    if(isJumpingTurn && currentChecker != jumpingChecker) {
+        return -1;
     }
     int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
     int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
@@ -118,11 +125,11 @@ int Game::checkValidMove() {
     if(distance > 120 && distance < 170) {
         int xHalf = lastCheckerPosition.x - (deltaX / 2);
         int yHalf = lastCheckerPosition.y - (deltaY/2);
-        if(currentPlayer == BLACK) {
+        if(currentPlayer == BLACK && !currentChecker->isKing()) {
             if(angle > 0.7 && angle < 2.5 && checkerAt(xHalf, yHalf, currentPlayer)) {
                 return 1;
             }
-        }else if(currentPlayer == RED) {
+        }else if(currentPlayer == RED && !currentChecker->isKing()) {
             if(angle < -0.7 && angle > -2.5 && checkerAt(xHalf, yHalf, currentPlayer)) {
                 return 1;
             }
@@ -131,6 +138,9 @@ int Game::checkValidMove() {
                 return 1;
             }
         }
+    }
+    if(isJumpingTurn) {
+        return -1;
     }
     if(currentPlayer == BLACK && !currentChecker->isKing()) {
         if(angle > 0.7 && angle < 2.5 && distance > 45 && distance < 95) {
@@ -176,7 +186,6 @@ void Game::processMouseClick(sf::Event& e) {
             free(currentPos);
 
         }else if(validMove == 1) {
-            //TODO: CHECK FOR OTHER JUMPS ELSE END TURN
             int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
             int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
             sf::Vector2f pos = getClosestPosition(currentChecker);
@@ -198,14 +207,51 @@ void Game::processMouseClick(sf::Event& e) {
                     checkers.erase(checkers.begin() + i);
                     onPieceCapture();
                     onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
-                    currentChecker = nullptr;
-                    free(checkerToRemove);
-                    free(prevPos);
-                    free(currentPos);
-                    return;
+                    int checkerX = currentChecker->getPosition().x;
+                    int checkerY = currentChecker->getPosition().y;
+                    std::vector<sf::Vector2f> jumpPositions{};
+                    std::vector<sf::Vector2f> possibleJumps{};
+
+                    if(currentChecker->isKing()) {
+                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
+                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
+                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
+                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
+
+                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
+                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
+                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
+                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
+                    }else if(currentChecker->getPlayer() == BLACK) {
+                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
+                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2));
+                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
+                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY + BOARD_SQUARE_SIZE));
+                    }else if(currentChecker->getPlayer() == RED) {
+                        possibleJumps.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
+                        possibleJumps.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE*2, checkerY - BOARD_SQUARE_SIZE*2));
+                        jumpPositions.push_back(sf::Vector2f(checkerX + BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
+                        jumpPositions.push_back(sf::Vector2f(checkerX - BOARD_SQUARE_SIZE, checkerY - BOARD_SQUARE_SIZE));
+                    }
+
+                    bool hasJump = false;
+                    for(int i = 0; i < jumpPositions.size(); i++) {
+                        if(checkerAt(jumpPositions[i].x, jumpPositions[i].y, currentPlayer) && !checkerAt(possibleJumps[i].x, possibleJumps[i].y, NONE)) {
+                            hasJump = true;
+                            break;
+                        }
+                    }
+                    if(hasJump) {
+                        isJumpingTurn = true;
+                        jumpingChecker = currentChecker;
+                        currentChecker = nullptr;
+                        free(checkerToRemove);
+                        free(prevPos);
+                        free(currentPos);
+                        return;
+                    }
                 }
             }
-
             free(checkerToRemove);
             free(prevPos);
             free(currentPos);
@@ -213,6 +259,8 @@ void Game::processMouseClick(sf::Event& e) {
             currentChecker->setPosition(lastCheckerPosition.x, lastCheckerPosition.y);
         }
         if(validMove != -1) {
+            isJumpingTurn = false;
+            jumpingChecker = nullptr;
             onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
             onTurnChange();
         }
