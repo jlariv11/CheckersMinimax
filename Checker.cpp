@@ -10,24 +10,21 @@
 
 Checker::Checker(int id) {
     this->player = NONE;
-    this->posX = 0;
-    this->posY = 0;
+    this->position = sf::Vector2i(0, 0);
     this->king = false;
     this->checkerID = id;
 }
 
 Checker::Checker(Player player, int id) {
     this->player = player;
-    this->posX = 0;
-    this->posY = 0;
+    this->position = sf::Vector2i(0, 0);
     this->king = false;
     this->checkerID = id;
 }
 
-Checker::Checker(int x, int y, Player player, int id) {
+Checker::Checker(sf::Vector2i pos, Player player, int id) {
     this->player = player;
-    this->posX = x;
-    this->posY = y;
+    this->position = pos;
     this->king = false;
     this->checkerID = id;
 }
@@ -39,13 +36,12 @@ int Checker::getID() const {
 }
 
 
-void Checker::setPosition(int x, int y) {
-    posX = x;
-    posY = y;
+void Checker::setPosition(sf::Vector2i pos) {
+    this->position = pos;
 }
 
 sf::Vector2i Checker::getPosition() const {
-    return {posX, posY};
+    return position;
 }
 Player Checker::getPlayer() const {
     return player;
@@ -63,18 +59,28 @@ void Checker::setKing() {
 
 void Checker::draw() const {
     sf::CircleShape shape(CHECKER_RADIUS);
-    shape.setPosition(posX, posY);
+    shape.setPosition(position.x, position.y);
     shape.setFillColor(player == RED ? sf::Color::Red : sf::Color::Black);
     shape.setOrigin(CHECKER_RADIUS, CHECKER_RADIUS);
     ScreenManager::getInstance()->getWindow()->draw(shape);
     if(isKing()) {
         sf::CircleShape shape1(CHECKER_RADIUS - 10);
-        shape1.setPosition(posX, posY);
+        shape1.setPosition(position.x, position.y);
         shape1.setFillColor(sf::Color::Yellow);
         shape1.setOrigin(CHECKER_RADIUS - 10, CHECKER_RADIUS - 10);
         ScreenManager::getInstance()->getWindow()->draw(shape1);
     }
 
 }
+
+bool Checker::operator!=(const Checker &other) const {
+    return !(*this == other);
+}
+
+bool Checker::operator==(const Checker &other) const {
+    return checkerID == other.checkerID;
+}
+
+
 
 

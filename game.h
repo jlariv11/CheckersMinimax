@@ -4,6 +4,8 @@
 #ifndef GAME_H
 #define GAME_H
 #include <vector>
+
+#include "Board.h"
 #include "GameProps.h"
 
 #include "SFML/Graphics/RenderWindow.hpp"
@@ -17,18 +19,15 @@ public:
     void run();
 
 private:
-    int** board;
-    std::vector<sf::Vector2i> boardPositions;
-    std::vector<Checker*> checkers;
+    Board board;
     Player currentPlayer;
     GameState gameState;
-    std::vector<int**> statesSinceLastCapture;
+    std::vector<Board> statesSinceLastCapture;
     Checker* currentChecker;
     sf::Vector2i lastCheckerPosition;
     bool isJumpingTurn;
     Checker* jumpingChecker;
     int movesSinceLastCapture;
-    void initializeBoard();
     void onPieceCapture();
     void onTurnChange();
     void onCheckerMove(sf::Vector2i from, sf::Vector2i to, Checker* checker);
@@ -36,14 +35,9 @@ private:
     void processMouseClick(const sf::Event& e);
     void processMouseMove(const sf::Event& e) const;
     static bool checkBounds(int mouseX, int mouseY, Checker* checker);
-    bool hasMoves(Checker* checker, bool onlyJump) const;
-    int checkValidMove() const;
-    static int* worldToBoard(sf::Vector2i coordinate);
-    bool checkerAt(int x, int y, Player color) const;
-    static sf::Vector2i getClosestPosition(Checker* checker);
-
-    static int round(int num);
-    bool checkWin(Player player) const;
+    bool hasMoves(Checker* checker, bool onlyJump);
+    int checkValidMove();
+    void minimax(int** board, int depth, bool isMaximizing);
 
 };
 

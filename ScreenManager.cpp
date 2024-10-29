@@ -3,6 +3,9 @@
 //
 
 #include "ScreenManager.h"
+
+#include <iostream>
+
 #include "SFML/Graphics/Font.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
 #include "SFML/Graphics/Text.hpp"
@@ -24,17 +27,16 @@ void ScreenManager::start() {
         return;
     }
     window = new sf::RenderWindow(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Checkers Minimax");
-    drawScreen(std::vector<Checker*>(), NONE, STOPPED);
 }
 
 sf::RenderWindow *ScreenManager::getWindow() const {
     return window;
 }
 
-void ScreenManager::drawScreen(const std::vector<Checker*>& checkers, Player currentPlayer, GameState gameState) const {
+void ScreenManager::drawScreen(Board b, Player currentPlayer, GameState gameState) const {
     window->clear(sf::Color::White);
     drawBackground();
-    drawCheckers(checkers);
+    b.drawCheckers();
     drawInfo(currentPlayer, gameState);
     window->display();
 }
@@ -66,14 +68,6 @@ void ScreenManager::drawInfo(Player currentPlayer, GameState gameState) const {
     window->draw(text);
 
 }
-
-
-void ScreenManager::drawCheckers(const std::vector<Checker*> &checkers) {
-    for(auto checker : checkers) {
-        checker->draw();
-    }
-}
-
 
 void ScreenManager::drawBackground() const {
     bool red = true;

@@ -5,14 +5,17 @@
 #ifndef SCREENMANAGER_H
 #define SCREENMANAGER_H
 #include "Checker.h"
+#include "Board.h"
 #include "SFML/Graphics/Font.hpp"
 #include "SFML/Graphics/RenderWindow.hpp"
 
 
+class Board;
+
 class ScreenManager {
     public:
     static ScreenManager* getInstance();
-    void drawScreen(const std::vector<Checker*>& checkers, Player currentPlayer, GameState gameState) const;
+    void drawScreen(Board b, Player currentPlayer, GameState gameState) const;
     void start();
     sf::RenderWindow* getWindow() const;
     ScreenManager(const ScreenManager&) = delete;
@@ -25,7 +28,6 @@ class ScreenManager {
     sf::Font font;
     void drawBackground() const;
     void drawInfo(Player currentPlayer, GameState gameState) const;
-    static void drawCheckers(const std::vector<Checker*> &checkers);
 };
 
 #endif //SCREENMANAGER_H

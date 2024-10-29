@@ -11,21 +11,22 @@ class Checker {
     public:
     Checker(int id);
     Checker(Player player, int id);
-    Checker(int x, int y, Player player, int id);
+    Checker(sf::Vector2i pos, Player player, int id);
     ~Checker();
     void draw() const;
-    void setPosition(int x, int y);
+    void setPosition(sf::Vector2i position);
     bool isKing() const;
     void setKing();
     int getID() const;
     sf::Vector2i getPosition() const;
     Player getPlayer() const;
+    bool operator==(const Checker& other) const;
+    bool operator!=(const Checker& other) const;
 
 private:
     int checkerID;
     Player player;
-    int posX;
-    int posY;
+    sf::Vector2i position;
     bool king;
 };
 

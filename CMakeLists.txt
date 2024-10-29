@@ -15,6 +15,8 @@ add_executable(CheckersMinimax game.cpp
         Checker.h
         Checker.cpp
         GameProps.h
+        Board.h
+        Board.cpp
 )
 
 target_link_libraries(CheckersMinimax sfml-graphics)
