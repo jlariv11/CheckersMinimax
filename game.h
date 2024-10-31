@@ -36,8 +36,10 @@ private:
     void processMouseMove(const sf::Event& e) const;
     static bool checkBounds(int mouseX, int mouseY, Checker* checker);
     bool hasMoves(Checker* checker, bool onlyJump);
+    std::vector<sf::Vector2i> getMoves(Checker* checker, bool onlyJump);
     int checkValidMove();
-    void minimax(int** board, int depth, bool isMaximizing);
+    int minimax(Board board, int depth, int score, bool isMaximizing);
+    void aiTurn();
 
 };
 

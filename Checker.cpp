@@ -60,7 +60,11 @@ void Checker::setKing() {
 void Checker::draw() const {
     sf::CircleShape shape(CHECKER_RADIUS);
     shape.setPosition(position.x, position.y);
-    shape.setFillColor(player == RED ? sf::Color::Red : sf::Color::Black);
+    if(player == NONE) {
+        shape.setFillColor(sf::Color::Green);
+    }else {
+        shape.setFillColor(player == RED ? sf::Color::Red : sf::Color::Black);
+    }
     shape.setOrigin(CHECKER_RADIUS, CHECKER_RADIUS);
     ScreenManager::getInstance()->getWindow()->draw(shape);
     if(isKing()) {

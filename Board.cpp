@@ -55,6 +55,9 @@ void Board::drawCheckers() {
             }
         }
     }
+    for(Checker* c : debugCheckers) {
+        c->draw();
+    }
 }
 
 
@@ -66,22 +69,33 @@ sf::Vector2i Board::worldToArray(sf::Vector2i worldPos) {
     return {x,y};
 }
 
-int Board::round(int num) {
-    int rounded = ((num + 12) / 25) * 25;
-    if(rounded % 10 == 0) {
-        if(num < rounded) {
-            rounded -= 25;
+sf::Vector2i Board::round(sf::Vector2i vec) {
+    int roundedX = ((vec.x + 12) / 25) * 25;
+    if(roundedX % 10 == 0) {
+        if(vec.x < roundedX) {
+            roundedX -= 25;
         }else {
-            rounded += 25;
+            roundedX += 25;
         }
     }
-    return rounded;
+    int roundedY = ((vec.y + 12) / 25) * 25;
+    if(roundedY % 10 == 0) {
+        if(vec.y < roundedY) {
+            roundedY -= 25;
+        }else {
+            roundedY += 25;
+        }
+    }
+    return {roundedX,roundedY};
 }
 
+void Board::debugPosition(sf::Vector2i pos) {
+    debugCheckers.push_back(new Checker(pos, NONE, -1));
+}
+
+
 sf::Vector2i Board::getClosestPosition(sf::Vector2i pos) {
-    int x = round(pos.x);
-    int y = round(pos.y);
-    return {x, y};
+    return round(pos);
 }
 
 Checker* Board::getCheckerAt(sf::Vector2i pos, Player ignore) {
@@ -128,14 +142,26 @@ void Board::removeChecker(sf::Vector2i pos) {
 }
 
 
-void Board::moveChecker(sf::Vector2i from, sf::Vector2i to) {
+void Board::moveChecker(sf::Vector2i from, sf::Vector2i to, bool isJump) {
     sf::Vector2i boardFrom = worldToArray(from);
     sf::Vector2i worldClosest = getClosestPosition(to);
     sf::Vector2i boardTo = worldToArray(worldClosest);
     Checker* checker = board[boardFrom.y][boardFrom.x];
+    if(checker == nullptr) {
+        return;
+    }
     board[boardFrom.y][boardFrom.x] = nullptr;
     checker->setPosition(worldClosest);
     board[boardTo.y][boardTo.x] = checker;
+    if(isJump) {
+        int deltaX = from.x - to.x;
+        int deltaY = from.y - to.y;
+
+        int xHalf = from.x - (deltaX / 2);
+        int yHalf = from.y - (deltaY / 2);
+
+        removeChecker({xHalf, yHalf});
+    }
 }
 
 bool Board::operator==(const Board& other) const {

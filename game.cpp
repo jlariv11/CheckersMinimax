@@ -26,90 +26,59 @@ int Game::checkValidMove() {
     if(isJumpingTurn && currentChecker != jumpingChecker) {
         return -1;
     }
-    int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
-    int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
-    double angle = atan2(deltaY, deltaX);
-    double distance = sqrt(deltaX * deltaX + deltaY * deltaY);
-    // Regular move: between 45 and 95
-    // Jump move: between 120 and 170
-    if(distance > 120 && distance < 170) {
-        int xHalf = lastCheckerPosition.x - (deltaX / 2);
-        int yHalf = lastCheckerPosition.y - (deltaY/2);
-        if(board.getCheckerAt({xHalf, yHalf}, currentPlayer) != nullptr) {
-            if(currentChecker->isKing()) {
-                if(((angle < -0.7 && angle > -2.5) || (angle > 0.7 && angle < 2.5))) {
-                    return 1;
-                }
-            }else if(currentPlayer == BLACK) {
-                if(angle > 0.7 && angle < 2.5) {
-                    return 1;
-                }
-            }else if(currentPlayer == RED) {
-                if(angle < -0.7 && angle > -2.5) {
-                    return 1;
-                }
-            }
+    // Create a temporary checker with the current checker's position before being picked up
+    Checker* temp = new Checker(lastCheckerPosition, currentChecker->getPlayer(), -1);
+    if(currentChecker->isKing()) {
+        temp->setKing();
+    }
+    // Generate all possible moves that could be made from that position
+    std::vector<sf::Vector2i> moves = getMoves(temp, false);
+    delete temp;
+    sf::Vector2i pos = board.getClosestPosition(currentChecker->getPosition());
+    // Loop through all moves and see if the current checker's position matches any of them
+    for(sf::Vector2i move : moves) {
+        if(move == pos) {
+            // if it does, return 1(true) if it was a jump move or 0(false) if it was a regular move
+            return (move.x - BOARD_SQUARE_SIZE*2) == lastCheckerPosition.x || (move.x + BOARD_SQUARE_SIZE*2) == lastCheckerPosition.x;
         }
     }
-    if(isJumpingTurn) {
-        return -1;
-    }
-    if(distance > 45 && distance < 95) {
-        if(currentChecker->isKing()) {
-            if((angle < -0.7 && angle > -2.5) || (angle > 0.7 && angle < 2.5)) {
-                return 0;
-            }
-        }else if(currentPlayer == BLACK) {
-            if(angle > 0.7 && angle < 2.5 && distance > 45 && distance < 95) {
-                return 0;
-            }
-        }else if(currentPlayer == RED) {
-            if(angle < -0.7 && angle > -2.5 && distance > 45 && distance < 95) {
-                return 0;
-            }
-        }
-    }
+    // The player made an invalid move
     return -1;
 }
 
 void Game::processMouseClick(const sf::Event& e) {
     if(currentChecker != nullptr) {
         int validMove = checkValidMove();
-        if(validMove == 0) {
-            board.moveChecker(lastCheckerPosition, currentChecker->getPosition());
-        }else if(validMove == 1) {
-            int deltaX = lastCheckerPosition.x - currentChecker->getPosition().x;
-            int deltaY = lastCheckerPosition.y - currentChecker->getPosition().y;
-            board.moveChecker(lastCheckerPosition, currentChecker->getPosition());
-
-            int xHalf = lastCheckerPosition.x - (deltaX / 2);
-            int yHalf = lastCheckerPosition.y - (deltaY / 2);
-
-            board.removeChecker({xHalf, yHalf});
+        if(validMove == -1) {
+            board.moveChecker(lastCheckerPosition, lastCheckerPosition, false);
+            currentChecker = nullptr;
+            return;
+        }
+        board.moveChecker(lastCheckerPosition, currentChecker->getPosition(), validMove);
+        onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
+        if(validMove == 1) {
             onPieceCapture();
-            onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
             if(hasMoves(currentChecker, true)) {
                 isJumpingTurn = true;
                 jumpingChecker = currentChecker;
                 currentChecker = nullptr;
                 return;
             }
-        }else {
-            board.moveChecker(lastCheckerPosition, lastCheckerPosition);
         }
-        if(validMove != -1) {
-            isJumpingTurn = false;
-            jumpingChecker = nullptr;
-            onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
-            onTurnChange();
-        }
+        isJumpingTurn = false;
+        jumpingChecker = nullptr;
+        onTurnChange();
         currentChecker = nullptr;
         return;
     }
+
     int posX = e.mouseButton.x;
     int posY = e.mouseButton.y;
     Checker* clickedChecker = board.getCheckerAt({posX, posY}, NONE);
     if(clickedChecker != nullptr) {
+        if(clickedChecker->getPlayer() != currentPlayer) {
+            return;
+        }
         currentChecker = clickedChecker;
         lastCheckerPosition = clickedChecker->getPosition();
         clickedChecker->setPosition({posX, posY});
@@ -126,6 +95,9 @@ void Game::onTurnChange() {
     currentPlayer = getOpposite(currentPlayer);
     movesSinceLastCapture++;
     statesSinceLastCapture.push_back(board);
+    if(currentPlayer == BLACK) {
+        //aiTurn();
+    }
 }
 
 void Game::onCheckerMove(sf::Vector2i from, sf::Vector2i to, Checker *checker) {
@@ -242,11 +214,18 @@ void Game::checkGameState() {
     gameState = board.hasWinner();
 }
 
-bool Game::hasMoves(Checker* checker, bool onlyJump) {
+
+bool Game::hasMoves(Checker *checker, bool onlyJump) {
+    return !getMoves(checker, onlyJump).empty();
+}
+
+
+std::vector<sf::Vector2i> Game::getMoves(Checker* checker, bool onlyJump) {
     int checkerX = checker->getPosition().x;
     int checkerY = checker->getPosition().y;
     std::vector<sf::Vector2i> jumpPositions{};
     std::vector<sf::Vector2i> possibleJumps{};
+    std::vector<sf::Vector2i> moves{};
 
     if(checker->isKing()) {
         possibleJumps.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
@@ -271,42 +250,116 @@ bool Game::hasMoves(Checker* checker, bool onlyJump) {
     }
 
     for(int j = 0; j < jumpPositions.size(); j++) {
-        if(jumpPositions[j].x < 275 || jumpPositions[j].x > 525 || possibleJumps[j].x < 275 || possibleJumps[j].x > 525) {
+        if(jumpPositions[j].x < 175 || jumpPositions[j].x > 625 || possibleJumps[j].x < 175 || possibleJumps[j].x > 625) {
             continue;
         }
-        if(jumpPositions[j].y < 125 || jumpPositions[j].y > 475 || possibleJumps[j].y < 125 || possibleJumps[j].y > 475) {
+        if(jumpPositions[j].y < 100 || jumpPositions[j].y > 500 || possibleJumps[j].y < 100 || possibleJumps[j].y > 500) {
             continue;
         }
         if(onlyJump) {
             if(board.getCheckerAt(jumpPositions[j], currentPlayer) != nullptr && board.getCheckerAt(possibleJumps[j], NONE) == nullptr) {
-                return true;
+                moves.push_back(possibleJumps[j]);
             }
         }else {
-             if(board.getCheckerAt(jumpPositions[j], NONE) == nullptr || (board.getCheckerAt(jumpPositions[j], currentPlayer) != nullptr && board.getCheckerAt(possibleJumps[j], NONE) == nullptr)) {
-                 return true;
+             if(board.getCheckerAt(jumpPositions[j], NONE) == nullptr) {
+                 moves.push_back(jumpPositions[j]);
+             }else if (board.getCheckerAt(jumpPositions[j], currentPlayer) != nullptr && board.getCheckerAt(possibleJumps[j], NONE) == nullptr) {
+                 moves.push_back(possibleJumps[j]);
              }
         }
     }
 
-    return false;
+    return moves;
+}
+
+void Game::aiTurn() {
+    Board b = board;
+    sf::Vector2i bestMove = sf::Vector2i(0, 0);
+    Checker* bestChecker = nullptr;
+    int bestScore = 0;
+    for(int i = 0; i < BOARD_HEIGHT; i++) {
+        for(int j = 0; j < BOARD_WIDTH; j++) {
+            Checker* checker = b.getCheckerAtArray({i,j});
+            if(checker == nullptr || checker->getPlayer() == RED) {
+                continue;
+            }
+            std::vector<sf::Vector2i> moves = getMoves(checker, false);
+            for(sf::Vector2i m : moves) {
+                sf::Vector2i lastPos = checker->getPosition();
+                bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
+                b.moveChecker(lastPos, m, isJumpMove);
+                int score = minimax(b, 2, 0, false);
+                b.moveChecker(m, lastPos, false);
+                if(score > bestScore) {
+                    bestScore = score;
+                    bestChecker = checker;
+                    bestMove = m;
+                }
+            }
+        }
+    }
+    if(bestChecker != nullptr) {
+        sf::Vector2i lastPos = bestChecker->getPosition();
+        bool isJumpMove = (bestMove.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (bestMove.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
+        board.moveChecker(lastPos, bestMove, isJumpMove);
+        onCheckerMove(lastPos, bestMove, bestChecker);
+        if(isJumpMove) {
+            onPieceCapture();
+        }
+        onTurnChange();
+    }
 }
 
 
 // AI is maximizing
 // Player is minimizing
-void Game::minimax(int** board, int depth, bool isMaximizing) {
-    int value = 0;
-    //TODO: or someone wins or draws
-    if(depth == 0) {
-
+int Game::minimax(Board board, int depth, int score, bool isMaximizing) {
+    /*
+     * Score:
+     * +10 AI capture
+     * -10 Player capture
+     * +5 AI king
+     * -5 Player king
+     */
+    //TODO: or draws
+    if(board.hasWinner() != IN_PROGRESS) {
+        if(isMaximizing) {
+            return board.hasWinner() == RED_WIN ? (-INFINITY) : (1000 - depth);
+        }else {
+            return board.hasWinner() == BLACK_WIN ? (INFINITY) : (-1000 + depth);
+        }
     }
-    if(isMaximizing) {
-        value = -INFINITY;
-        for(int i = 0; i < BOARD_HEIGHT; i++) {
-            for(int j = 0; j < BOARD_WIDTH; j++) {
-                if(board[i][j] == RED) {
-                    continue;
+    if(depth <= 0) {
+        return score;
+    }
+    for(int i = 0; i < BOARD_HEIGHT; i++) {
+        for(int j = 0; j < BOARD_WIDTH; j++) {
+            Checker* checker = board.getCheckerAtArray({i,j});
+            if(checker == nullptr || checker->getPlayer() == (isMaximizing ? RED : BLACK)) {
+                continue;
+            }
+            std::vector<sf::Vector2i> moves = getMoves(checker, false);
+            for(sf::Vector2i m : moves) {
+                sf::Vector2i lastPos = checker->getPosition();
+                bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
+                board.moveChecker(lastPos, m, isJumpMove);
+                int newScore = score;
+                if(isJumpMove) {
+                    if(isMaximizing) {
+                        newScore += 10;
+                    }else {
+                        newScore -= 10;
+                    }
                 }
+                if(!checker->isKing()) {
+                    if(isMaximizing && m.y == 125) {
+                        newScore += 5;
+                    }else if(!isMaximizing && m.y == 425) {
+                        newScore -= 5;
+                    }
+                }
+                minimax(board, depth - 1, newScore, !isMaximizing);
+                board.moveChecker(m, lastPos, false);
             }
         }
     }
