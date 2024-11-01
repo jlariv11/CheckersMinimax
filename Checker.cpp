@@ -5,8 +5,11 @@
 
 #include "Checker.h"
 
+#include <iostream>
+
 #include "ScreenManager.h"
 #include "SFML/Graphics/CircleShape.hpp"
+#include "SFML/Graphics/Text.hpp"
 
 Checker::Checker(int id) {
     this->player = NONE;

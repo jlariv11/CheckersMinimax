@@ -33,10 +33,32 @@ sf::RenderWindow *ScreenManager::getWindow() const {
     return window;
 }
 
+
+
 void ScreenManager::drawScreen(Board b, Player currentPlayer, GameState gameState) const {
     window->clear(sf::Color::White);
     drawBackground();
     b.drawCheckers();
+    for(std::shared_ptr<Checker> c : b.getBlackCheckers()) {
+        sf::Text text;
+        text.setFont(font);
+        text.setPosition(c->getPosition().x, c->getPosition().y - 10);
+        text.setString(std::to_string(c->getID()));
+        text.setCharacterSize(40);
+        text.setOrigin(text.getLocalBounds().width / 2, text.getLocalBounds().height / 2);
+        text.setFillColor(sf::Color::Green);
+        window->draw(text);
+    }
+    for(std::shared_ptr<Checker> c : b.getRedCheckers()) {
+        sf::Text text;
+        text.setFont(font);
+        text.setPosition(c->getPosition().x, c->getPosition().y - 10);
+        text.setString(std::to_string(c->getID()));
+        text.setCharacterSize(40);
+        text.setOrigin(text.getLocalBounds().width / 2, text.getLocalBounds().height / 2);
+        text.setFillColor(sf::Color::Green);
+        window->draw(text);
+    }
     drawInfo(currentPlayer, gameState);
     window->display();
 }

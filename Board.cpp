@@ -8,6 +8,8 @@
 #include <iostream>
 
 Board::Board() {
+    blackCheckers = std::vector<std::shared_ptr<Checker>>();
+    redCheckers = std::vector<std::shared_ptr<Checker>>();
     bool red = true;
     for(int i = 0; i < BOARD_HEIGHT; i++){
         for(int j = 0; j < BOARD_WIDTH; j++){
@@ -22,24 +24,42 @@ Board::Board() {
         }
         for(int j = red; j < BOARD_WIDTH; j+=2){
             sf::Vector2i pos = arrayToWorld({j, i});
-            board[i][j] = i < 3 ? new Checker(pos, RED, id++) : new Checker(pos, BLACK, id++);
+            board[i][j] = i < 3 ? std::make_shared<Checker>(pos, RED, id++) : std::make_shared<Checker>(pos, BLACK, id++);
+            if(board[i][j]->getPlayer() == RED) {
+                redCheckers.push_back(board[i][j]);
+            }else {
+                blackCheckers.push_back(board[i][j]);
+            }
         }
         red = !red;
     }
 }
 
 Board::~Board() {
-    //TODO: FIX
-    /*
-    for (int i = 0; i < BOARD_WIDTH; ++i) {
-        for(int j = 0; j < BOARD_HEIGHT; j++) {
-            if(board[i][j] != nullptr) {
-                delete board[i][j];
+    for(Checker* c : debugCheckers) {
+        delete c;
+    }
+}
+
+Board::Board(const Board &other) {
+    for (int i = 0; i < BOARD_HEIGHT; ++i) {
+        for (int j = 0; j < BOARD_WIDTH; ++j) {
+            std::shared_ptr<Checker> c = other.board[i][j];
+            if(c != nullptr) {
+                board[i][j] = std::make_shared<Checker>(c->getPosition(), c->getPlayer(), c->getID());
+                if(c->getPlayer() == RED) {
+                    redCheckers.push_back(board[i][j]);
+                }else {
+                    blackCheckers.push_back(board[i][j]);
+                }
+            }else {
+                board[i][j] = nullptr;
             }
         }
     }
-    */
+
 }
+
 
 sf::Vector2i Board::arrayToWorld(sf::Vector2i arrayPos) {
     int x = (arrayPos.x * BOARD_SQUARE_SIZE) + 225;
@@ -56,9 +76,19 @@ void Board::drawCheckers() {
         }
     }
     for(Checker* c : debugCheckers) {
+        std::cout << "Drawing" << std::endl;
         c->draw();
     }
 }
+
+std::vector<std::shared_ptr<Checker>> Board::getBlackCheckers() {
+    return blackCheckers;
+}
+
+std::vector<std::shared_ptr<Checker>> Board::getRedCheckers() {
+    return redCheckers;
+}
+
 
 
 sf::Vector2i Board::worldToArray(sf::Vector2i worldPos) {
@@ -98,7 +128,7 @@ sf::Vector2i Board::getClosestPosition(sf::Vector2i pos) {
     return round(pos);
 }
 
-Checker* Board::getCheckerAt(sf::Vector2i pos, Player ignore) {
+std::shared_ptr<Checker> Board::getCheckerAt(sf::Vector2i pos, Player ignore) {
     sf::Vector2i arrayPos = worldToArray(getClosestPosition(pos));
     if(board[arrayPos.y][arrayPos.x] != nullptr && board[arrayPos.y][arrayPos.x]->getPlayer() == ignore) {
         return nullptr;
@@ -106,7 +136,7 @@ Checker* Board::getCheckerAt(sf::Vector2i pos, Player ignore) {
     return board[arrayPos.y][arrayPos.x];
 }
 
-Checker *Board::getCheckerAtArray(sf::Vector2i pos) {
+std::shared_ptr<Checker> Board::getCheckerAtArray(sf::Vector2i pos) {
     return board[pos.y][pos.x];
 }
 
@@ -134,11 +164,33 @@ GameState Board::hasWinner() {
     return IN_PROGRESS;
 }
 
+void Board::deleteChecker(std::shared_ptr<Checker> checker) {
+    if(checker == nullptr) {
+        return;
+    }
+    sf::Vector2i checkerPos = worldToArray(checker->getPosition());
+    if(board[checkerPos.y][checkerPos.x]->getPlayer() == BLACK) {
+        for(int i = 0; i < blackCheckers.size(); i++) {
+            if(blackCheckers[i]->getID() == board[checkerPos.y][checkerPos.x]->getID()) {
+                blackCheckers.erase(blackCheckers.begin() + i);
+                break;
+            }
+        }
+    }else {
+        for(int i = 0; i < redCheckers.size(); i++) {
+            if(redCheckers[i]->getID() == board[checkerPos.y][checkerPos.x]->getID()) {
+                redCheckers.erase(redCheckers.begin() + i);
+                break;
+            }
+        }
+    }
+    board[checkerPos.y][checkerPos.x] = nullptr;
+}
+
 
 void Board::removeChecker(sf::Vector2i pos) {
     sf::Vector2i checkerPos = worldToArray(getClosestPosition(pos));
-    free(board[checkerPos.y][checkerPos.x]);
-    board[checkerPos.y][checkerPos.x] = nullptr;
+    deleteChecker(board[checkerPos.y][checkerPos.x]);
 }
 
 
@@ -146,7 +198,7 @@ void Board::moveChecker(sf::Vector2i from, sf::Vector2i to, bool isJump) {
     sf::Vector2i boardFrom = worldToArray(from);
     sf::Vector2i worldClosest = getClosestPosition(to);
     sf::Vector2i boardTo = worldToArray(worldClosest);
-    Checker* checker = board[boardFrom.y][boardFrom.x];
+    std::shared_ptr<Checker> checker = board[boardFrom.y][boardFrom.x];
     if(checker == nullptr) {
         return;
     }
