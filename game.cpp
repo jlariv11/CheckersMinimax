@@ -20,9 +20,12 @@ Game::~Game() = default;
 
 
 int Game::checkValidMove() {
-    if(board.getCheckerAt(currentChecker->getPosition(), NONE) != nullptr) {
+    // Move is invalid if there is a checker at the current position
+    if(this->board.getCheckerAt(currentChecker->getPosition(), NONE) != nullptr) {
         return -1;
     }
+    // Move is invalid if the checker moved is not the same as the one used to make a jump
+    // Double jumping
     if(isJumpingTurn && currentChecker != jumpingChecker) {
         return -1;
     }
@@ -32,8 +35,8 @@ int Game::checkValidMove() {
         temp->setKing();
     }
     // Generate all possible moves that could be made from that position
-    std::vector<sf::Vector2i> moves = getMoves(temp, false);
-    sf::Vector2i pos = board.getClosestPosition(currentChecker->getPosition());
+    std::vector<sf::Vector2i> moves = getMoves(this->board, temp, false);
+    sf::Vector2i pos = this->board.getClosestPosition(currentChecker->getPosition());
     // Loop through all moves and see if the current checker's position matches any of them
     for(sf::Vector2i move : moves) {
         if(move == pos) {
@@ -46,39 +49,47 @@ int Game::checkValidMove() {
 }
 
 void Game::processMouseClick(const sf::Event& e) {
-    //std::cout << e.mouseButton.x << ", " << e.mouseButton.y << std::endl;
+    // Player clicks while carrying a checker
     if(currentChecker != nullptr) {
         int validMove = checkValidMove();
+        // If the player makes an invalid move, put the checker back where it started
         if(validMove == -1) {
-            board.moveChecker(lastCheckerPosition, lastCheckerPosition, false);
+            this->board.moveChecker(lastCheckerPosition, lastCheckerPosition, false);
             currentChecker = nullptr;
             return;
         }
-        board.moveChecker(lastCheckerPosition, currentChecker->getPosition(), validMove);
+        // Otherwise, move the checker to the clicked position
+        this->board.moveChecker(lastCheckerPosition, currentChecker->getPosition(), validMove);
         onCheckerMove(lastCheckerPosition, currentChecker->getPosition(), currentChecker);
+        // If that move was a jump, check if there is another jump available
         if(validMove == 1) {
             onPieceCapture();
-            if(hasMoves(currentChecker, true)) {
+            // If there is another jump available, allow the player to make the jump (double jump)
+            // Skips turn change code
+            if(hasMoves(this->board, currentChecker, true)) {
                 isJumpingTurn = true;
                 jumpingChecker = currentChecker;
                 currentChecker = nullptr;
                 return;
             }
         }
+        // Switch to next player's turn
         isJumpingTurn = false;
         jumpingChecker = nullptr;
         onTurnChange();
         currentChecker = nullptr;
         return;
     }
-
+    // Checker Pickup click
     int posX = e.mouseButton.x;
     int posY = e.mouseButton.y;
-    std::shared_ptr<Checker> clickedChecker = board.getCheckerAt({posX, posY}, NONE);
+    std::shared_ptr<Checker> clickedChecker = this->board.getCheckerAt({posX, posY}, NONE);
+    // Make sure the spot clicked has a checker, and the checker is the same color as the current player
     if(clickedChecker != nullptr) {
         if(clickedChecker->getPlayer() != currentPlayer) {
             return;
         }
+        // Update current checker to allow it to follow the mouse
         currentChecker = clickedChecker;
         lastCheckerPosition = clickedChecker->getPosition();
         clickedChecker->setPosition({posX, posY});
@@ -86,38 +97,44 @@ void Game::processMouseClick(const sf::Event& e) {
 }
 
 void Game::processMouseMove(const sf::Event& e) const {
+    // Update the current checker's position to the mouse position when it moves
     if(currentChecker != nullptr) {
         currentChecker->setPosition({e.mouseMove.x, e.mouseMove.y});
     }
 }
 
 void Game::onTurnChange() {
+    // Update the current turn, and moves and states since last capture
     currentPlayer = getOpposite(currentPlayer);
     movesSinceLastCapture++;
-    statesSinceLastCapture.push_back(board);
+    statesSinceLastCapture.push_back(this->board);
+    // Do the AI's turn
     if(currentPlayer == BLACK) {
         aiTurn();
     }
 }
 
 void Game::onCheckerMove(sf::Vector2i from, sf::Vector2i to, std::shared_ptr<Checker> checker) {
+    // Check weather the movement results in a king
     if(checker->getPlayer() == RED && to.y == 475 && !checker->isKing()) {
         checker->setKing();
     }
     if(checker->getPlayer() == BLACK && to.y == 125 && !checker->isKing()) {
         checker->setKing();
     }
-    checkGameState();
+    // Update the game state
+    gameState = checkGameState(this->board);
 }
 
-
-bool Game::checkBounds(int mouseX, int mouseY, std::shared_ptr<Checker> checker) {
-    if(mouseX <= checker->getPosition().x + CHECKER_RADIUS && mouseX >= checker->getPosition().x - CHECKER_RADIUS) {
-        if(mouseY <= checker->getPosition().y + CHECKER_RADIUS && mouseY >= checker->getPosition().y - CHECKER_RADIUS) {
-            return true;
-        }
+GameState Game::hasWinner(Board board) {
+    // If a player runs out of checkers, it is a win for the other player
+    if(board.getBlackCheckers().size() == 0) {
+        return RED_WIN;
     }
-    return false;
+    if(board.getRedCheckers().size() == 0) {
+        return BLACK_WIN;
+    }
+    return IN_PROGRESS;
 }
 
 void Game::run() {
@@ -145,7 +162,7 @@ void Game::run() {
 
 
         // Render
-        screenManager->drawScreen(board, currentPlayer, gameState);
+        screenManager->drawScreen(this->board, currentPlayer, gameState);
 
         int currentTime = sf::Clock().getElapsedTime().asMilliseconds();
         int deltaTime = currentTime - startTime;
@@ -162,16 +179,18 @@ void Game::run() {
 }
 
 void Game::onPieceCapture() {
+    // Clear the data for moves and states since last capture
     movesSinceLastCapture = 0;
     statesSinceLastCapture.clear();
 }
-// Rules based on https://cardgames.io/checkers/
 
-void Game::checkGameState() {
+// Rules based on https://cardgames.io/checkers/
+GameState Game::checkGameState(Board board) {
+    // Game is a draw if there have been 100 moves (50 each) between the last checker capture
     if(movesSinceLastCapture >= 100){
-        gameState = DRAW;
-        return;
+        return DRAW;
     }
+    // If the same board state has shown up at least 3 times since the last capture, the game is a draw
     std::vector<Board> statesCopy = statesSinceLastCapture;
     if (!statesCopy.empty()) {
         Board currentBoard = statesCopy.back();
@@ -187,12 +206,11 @@ void Game::checkGameState() {
             currentBoard = statesCopy.back();
             statesCopy.pop_back();
             if(sameBoardCount >= 3){
-                gameState = DRAW;
-                return;
+                return DRAW;
             }
         }
     }
-
+    // If a player runs out of possible moves, the other player is the winner
     bool canMove = false;
     for(int i = 0; i < BOARD_WIDTH; i++) {
         for(int j = 0; j < BOARD_HEIGHT; j++) {
@@ -201,7 +219,7 @@ void Game::checkGameState() {
                 if(c->getPlayer() != getOpposite(currentPlayer)) {
                     continue;
                 }
-                if(hasMoves(c, false)) {
+                if(hasMoves(board, c, false)) {
                     canMove = true;
                     break;
                 }
@@ -212,24 +230,25 @@ void Game::checkGameState() {
         }
     }
     if(!canMove) {
-        gameState = getOpposite(currentPlayer) == RED ? BLACK_WIN : RED_WIN;
+        return getOpposite(currentPlayer) == RED ? BLACK_WIN : RED_WIN;
     }
-    gameState = board.hasWinner();
+    // Check for a winner
+    return hasWinner(board);
 }
 
 
-bool Game::hasMoves(std::shared_ptr<Checker> checker, bool onlyJump) {
-    return !getMoves(checker, onlyJump).empty();
+bool Game::hasMoves(Board board, std::shared_ptr<Checker> checker, bool onlyJump) {
+    return !getMoves(board, checker, onlyJump).empty();
 }
 
 
-std::vector<sf::Vector2i> Game::getMoves(std::shared_ptr<Checker> checker, bool onlyJump) {
+std::vector<sf::Vector2i> Game::getMoves(Board board, std::shared_ptr<Checker> checker, bool onlyJump) {
     int checkerX = checker->getPosition().x;
     int checkerY = checker->getPosition().y;
     std::vector<sf::Vector2i> movePositions{};
     std::vector<sf::Vector2i> jumpPositions{};
     std::vector<sf::Vector2i> moves{};
-
+    // Generate all possible positions for a BLACK, RED or KING to move or jump
     if(checker->isKing()) {
         jumpPositions.emplace_back(checkerX + BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
         jumpPositions.emplace_back(checkerX - BOARD_SQUARE_SIZE*2, checkerY + BOARD_SQUARE_SIZE*2);
@@ -291,24 +310,22 @@ std::vector<sf::Vector2i> Game::getMoves(std::shared_ptr<Checker> checker, bool 
 void Game::aiTurn() {
     std::shared_ptr<Checker> bestChecker = nullptr;
     sf::Vector2i bestMove;
-    int bestScore = -1;
+    int bestScore = -9999;
 
     // Loop through every black checker and generate its possible moves
-    for(std::shared_ptr<Checker> c : board.getBlackCheckers()) {
-        std::vector<sf::Vector2i> possibleMoves = getMoves(c, false);
-        //std::cout << "Possible moves for checker id: " << c->getID() << " at position: " << c->getPosition().x << ", " << c->getPosition().y << std::endl;
+    for(std::shared_ptr<Checker> c : this->board.getBlackCheckers()) {
+        std::vector<sf::Vector2i> possibleMoves = getMoves(this->board, c, false);
         // Loop through each possible move for the checker
         for(sf::Vector2i m : possibleMoves) {
             sf::Vector2i lastPos = c->getPosition();
             bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
-            //std::cout << m.x << ", " << m.y << (isJumpMove ? " and its a jump" : "") << std::endl;
             // Create a board copy for each possible move
-            Board b = board;
+            Board b = this->board;
             // Check if the move performed was a jump
             // Move the checker on the board copy
             b.moveChecker(lastPos, m, isJumpMove);
             // Perform minimax on this board state (is now minimizing (Player's move))
-            int score = minimax(b, 5, false);
+            int score = minimax(b, 4, false);
             // Compare the score to the current best score (AI is maximizing so the highest score)
             // Update the score, move to make, and the checker to move
             if(score > bestScore) {
@@ -322,7 +339,7 @@ void Game::aiTurn() {
     if(bestChecker != nullptr) {
         sf::Vector2i lastPos = bestChecker->getPosition();
         bool isJumpMove = (bestMove.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (bestMove.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
-        board.moveChecker(lastPos, bestMove, isJumpMove);
+        this->board.moveChecker(lastPos, bestMove, isJumpMove);
         onCheckerMove(lastPos, bestMove, bestChecker);
         if(isJumpMove) {
             onPieceCapture();
@@ -342,31 +359,33 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
      * +5 AI king
      * -5 Player king
      */
-    //TODO: or draws
     // Check the current board state for a winner
-    if(board.hasWinner() != IN_PROGRESS) {
-        // If we are maximizing (AI BLACK) a red win is worst outcome
-        // If we are minimizing (Player RED) a black win is worst outcome
+    GameState state = checkGameState(board);
+    if(state != IN_PROGRESS) {
+        if(state == DRAW) {
+            return isMaximizing ? -10 : 10;
+        }
+        // If we are maximizing (AI BLACK) a red win is the worst outcome
+        // If we are minimizing (Player RED) a black win is the worst outcome
         if(isMaximizing) {
-            return board.hasWinner() == RED_WIN ? (-INFINITY) : (1000 - depth);
+            return state == RED_WIN ? -9999 : (1000 - depth);
         }else {
-            return board.hasWinner() == BLACK_WIN ? (INFINITY) : (-1000 + depth);
+            return state == BLACK_WIN ? 9999 : (-1000 + depth);
         }
     }
     if(depth <= 0) {
         if(isMaximizing) {
-            return (board.getBlackCheckers().size() - board.getRedCheckers().size()) * 10;
+            return board.getBlackCheckers().size();
         }else {
-            std::cout << (board.getRedCheckers().size() - board.getBlackCheckers().size()) * 10 << std::endl;
-            return (board.getRedCheckers().size() - board.getBlackCheckers().size()) * 10;
+            return board.getRedCheckers().size();
         }
     }
 
     if(isMaximizing) {
-        int bestScore = -INFINITY;
+        int bestScore = -9999;
         // Loop through every black checker and generate its possible moves
         for(std::shared_ptr<Checker> c : board.getBlackCheckers()) {
-            std::vector<sf::Vector2i> possibleMoves = getMoves(c, false);
+            std::vector<sf::Vector2i> possibleMoves = getMoves(board, c, false);
             // Loop through each possible move for the checker
             for(sf::Vector2i m : possibleMoves) {
                 int moveScore = 0;
@@ -386,16 +405,17 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
                 // Move the checker on the board copy
                 b.moveChecker(lastPos, m, isJumpMove);
                 // Perform minimax on this board state (is now minimizing (Player's move))
-                int score = minimax(b, depth-1, false);
+                // If the AI jumps and has an available move, it gets another turn
+                int score = minimax(b, depth-1, isJumpMove && hasMoves(b, c, true));
                 bestScore = std::max(bestScore, score + moveScore);
             }
         }
         return bestScore;
     }else {
-        int bestScore = INFINITY;
+        int bestScore = 9999;
         // Loop through every red checker and generate its possible moves
         for(std::shared_ptr<Checker> c : board.getRedCheckers()) {
-            std::vector<sf::Vector2i> possibleMoves = getMoves(c, false);
+            std::vector<sf::Vector2i> possibleMoves = getMoves(board, c, false);
             // Loop through each possible move for the checker
             for(sf::Vector2i m : possibleMoves) {
                 int moveScore = 0;
@@ -415,7 +435,7 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
                 // Move the checker on the board copy
                 b.moveChecker(lastPos, m, isJumpMove);
                 // Perform minimax on this board state (is now maximizing (AI's move))
-                int score = minimax(b, depth-1, true);
+                int score = minimax(b, depth-1, !(isJumpMove && hasMoves(b, c, true)));
                 bestScore = std::min(bestScore, score + moveScore);
             }
         }

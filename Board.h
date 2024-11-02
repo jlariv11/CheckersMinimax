@@ -11,6 +11,13 @@
 
 class Board {
 
+/*
+ * The Board is responsible for:
+ * storing/deleting the checkers
+ * viewing the checkers
+ * modifying the positions of the checkers
+ */
+
 public:
     Board();
     ~Board();
@@ -23,7 +30,6 @@ public:
     std::vector<std::shared_ptr<Checker>> getRedCheckers();
     std::vector<std::shared_ptr<Checker>> getBlackCheckers();
     void drawCheckers();
-    GameState hasWinner();
     void debugPosition(sf::Vector2i pos);
     bool operator==(const Board& other) const;
     bool operator!=(const Board& other) const;

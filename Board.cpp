@@ -140,30 +140,6 @@ std::shared_ptr<Checker> Board::getCheckerAtArray(sf::Vector2i pos) {
     return board[pos.y][pos.x];
 }
 
-
-GameState Board::hasWinner() {
-    int redCount = 0;
-    int blackCount = 0;
-    for(int i = 0; i < BOARD_HEIGHT; i++) {
-        for(int j = 0; j < BOARD_WIDTH; j++) {
-            if(board[i][j] != nullptr) {
-                if(board[i][j]->getPlayer() == BLACK) {
-                    blackCount++;
-                }else if(board[i][j]->getPlayer() == RED) {
-                    redCount++;
-                }
-            }
-        }
-    }
-    if(blackCount == 0) {
-        return RED_WIN;
-    }
-    if(redCount == 0) {
-        return BLACK_WIN;
-    }
-    return IN_PROGRESS;
-}
-
 void Board::deleteChecker(std::shared_ptr<Checker> checker) {
     if(checker == nullptr) {
         return;

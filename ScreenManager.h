@@ -10,9 +10,12 @@
 #include "SFML/Graphics/RenderWindow.hpp"
 
 
-class Board;
-
 class ScreenManager {
+    /*
+     * The screen manager is responsible for:
+     * managing the game window
+     * drawing the screen
+     */
     public:
     static ScreenManager* getInstance();
     void drawScreen(Board b, Player currentPlayer, GameState gameState) const;

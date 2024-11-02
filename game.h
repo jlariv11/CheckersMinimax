@@ -10,9 +10,16 @@
 
 #include "SFML/Graphics/RenderWindow.hpp"
 
-class Checker;
-
 class Game {
+
+/*
+ * The game is responsible for:
+ * the game loop
+ * identifying the game state
+ * controlling and verifying player moves
+ * running Minimax for the AI's turn
+ */
+
 public:
     Game();
     ~Game();
@@ -31,15 +38,15 @@ private:
     void onPieceCapture();
     void onTurnChange();
     void onCheckerMove(sf::Vector2i from, sf::Vector2i to, std::shared_ptr<Checker>);
-    void checkGameState();
+    GameState checkGameState(Board board);
     void processMouseClick(const sf::Event& e);
     void processMouseMove(const sf::Event& e) const;
-    static bool checkBounds(int mouseX, int mouseY, std::shared_ptr<Checker>);
-    bool hasMoves(std::shared_ptr<Checker>, bool onlyJump);
-    std::vector<sf::Vector2i> getMoves(std::shared_ptr<Checker> checker, bool onlyJump);
+    bool hasMoves(Board board, std::shared_ptr<Checker>, bool onlyJump);
+    std::vector<sf::Vector2i> getMoves(Board board, std::shared_ptr<Checker> checker, bool onlyJump);
     int checkValidMove();
     int minimax(Board board, int depth, bool isMaximizing);
     void aiTurn();
+    GameState hasWinner(Board board);
 
 };
 

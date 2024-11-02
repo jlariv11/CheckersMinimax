@@ -8,6 +8,14 @@
 #include "SFML/System/Vector2.hpp"
 
 class Checker {
+    /*
+     * Checker creates and draws the object to be interacted with and viewed by the player
+     * A checker is defined by:
+     * its position
+     * its id
+     * its king status
+     * the player it belongs to
+     */
     public:
     Checker(int id);
     Checker(Player player, int id);
