@@ -291,7 +291,7 @@ std::vector<sf::Vector2i> Game::getMoves(std::shared_ptr<Checker> checker, bool 
 void Game::aiTurn() {
     std::shared_ptr<Checker> bestChecker = nullptr;
     sf::Vector2i bestMove;
-    int bestScore = 0;
+    int bestScore = -1;
 
     // Loop through every black checker and generate its possible moves
     for(std::shared_ptr<Checker> c : board.getBlackCheckers()) {
@@ -308,7 +308,7 @@ void Game::aiTurn() {
             // Move the checker on the board copy
             b.moveChecker(lastPos, m, isJumpMove);
             // Perform minimax on this board state (is now minimizing (Player's move))
-            int score = minimax(b, 3, 0, false);
+            int score = minimax(b, 5, false);
             // Compare the score to the current best score (AI is maximizing so the highest score)
             // Update the score, move to make, and the checker to move
             if(score > bestScore) {
@@ -334,7 +334,7 @@ void Game::aiTurn() {
 
 // AI is maximizing
 // Player is minimizing
-int Game::minimax(Board board, int depth, int score, bool isMaximizing) {
+int Game::minimax(Board board, int depth, bool isMaximizing) {
     /*
      * Score:
      * +10 AI capture
@@ -354,15 +354,22 @@ int Game::minimax(Board board, int depth, int score, bool isMaximizing) {
         }
     }
     if(depth <= 0) {
-        return score;
+        if(isMaximizing) {
+            return (board.getBlackCheckers().size() - board.getRedCheckers().size()) * 10;
+        }else {
+            std::cout << (board.getRedCheckers().size() - board.getBlackCheckers().size()) * 10 << std::endl;
+            return (board.getRedCheckers().size() - board.getBlackCheckers().size()) * 10;
+        }
     }
 
     if(isMaximizing) {
+        int bestScore = -INFINITY;
         // Loop through every black checker and generate its possible moves
         for(std::shared_ptr<Checker> c : board.getBlackCheckers()) {
             std::vector<sf::Vector2i> possibleMoves = getMoves(c, false);
             // Loop through each possible move for the checker
             for(sf::Vector2i m : possibleMoves) {
+                int moveScore = 0;
                 sf::Vector2i lastPos = c->getPosition();
                 // Create a board copy for each possible move
                 Board b = board;
@@ -370,24 +377,28 @@ int Game::minimax(Board board, int depth, int score, bool isMaximizing) {
                 bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
                 // If the move captures a checker, give it +10 score
                 if(isJumpMove) {
-                    score += 10;
+                    moveScore += 10;
                 }
                 // If the move creates a king, give it +5 score
                 if(!c->isKing() && m.y == 125) {
-                    score += 5;
+                    moveScore += 5;
                 }
                 // Move the checker on the board copy
                 b.moveChecker(lastPos, m, isJumpMove);
                 // Perform minimax on this board state (is now minimizing (Player's move))
-                minimax(b, depth-1, score, false);
+                int score = minimax(b, depth-1, false);
+                bestScore = std::max(bestScore, score + moveScore);
             }
         }
+        return bestScore;
     }else {
+        int bestScore = INFINITY;
         // Loop through every red checker and generate its possible moves
         for(std::shared_ptr<Checker> c : board.getRedCheckers()) {
             std::vector<sf::Vector2i> possibleMoves = getMoves(c, false);
             // Loop through each possible move for the checker
             for(sf::Vector2i m : possibleMoves) {
+                int moveScore = 0;
                 sf::Vector2i lastPos = c->getPosition();
                 // Create a board copy for each possible move
                 Board b = board;
@@ -395,18 +406,20 @@ int Game::minimax(Board board, int depth, int score, bool isMaximizing) {
                 bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
                 // If the move captures a checker, give it -10 score
                 if(isJumpMove) {
-                    score -= 10;
+                    moveScore -= 10;
                 }
                 // If the move creates a king, give it -5 score
                 if(!c->isKing() && m.y == 425) {
-                    score -= 5;
+                    moveScore -= 5;
                 }
                 // Move the checker on the board copy
                 b.moveChecker(lastPos, m, isJumpMove);
                 // Perform minimax on this board state (is now maximizing (AI's move))
-                minimax(b, depth-1, score, true);
+                int score = minimax(b, depth-1, true);
+                bestScore = std::min(bestScore, score + moveScore);
             }
         }
+        return bestScore;
     }
 }
 

@@ -38,7 +38,7 @@ private:
     bool hasMoves(std::shared_ptr<Checker>, bool onlyJump);
     std::vector<sf::Vector2i> getMoves(std::shared_ptr<Checker> checker, bool onlyJump);
     int checkValidMove();
-    int minimax(Board board, int depth, int score, bool isMaximizing);
+    int minimax(Board board, int depth, bool isMaximizing);
     void aiTurn();
 
 };
