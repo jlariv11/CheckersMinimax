@@ -368,16 +368,16 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
         // If we are maximizing (AI BLACK) a red win is the worst outcome
         // If we are minimizing (Player RED) a black win is the worst outcome
         if(isMaximizing) {
-            return state == RED_WIN ? -9999 : (1000 - depth);
+            return state == RED_WIN ? -9999 : (9999 - depth);
         }else {
-            return state == BLACK_WIN ? 9999 : (-1000 + depth);
+            return state == BLACK_WIN ? 9999 : (-9999 + depth);
         }
     }
     if(depth <= 0) {
         if(isMaximizing) {
             return board.getBlackCheckers().size();
         }else {
-            return board.getRedCheckers().size();
+            return -board.getRedCheckers().size();
         }
     }
 
