@@ -30,6 +30,8 @@ public:
     std::vector<std::shared_ptr<Checker>> getRedCheckers();
     std::vector<std::shared_ptr<Checker>> getBlackCheckers();
     void drawCheckers();
+    void undo(sf::Vector2i from, sf::Vector2i to, bool isJump);
+    int generateCheckerID();
     void debugPosition(sf::Vector2i pos);
     bool operator==(const Board& other) const;
     bool operator!=(const Board& other) const;

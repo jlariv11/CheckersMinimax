@@ -320,12 +320,12 @@ void Game::aiTurn() {
             sf::Vector2i lastPos = c->getPosition();
             bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
             // Create a board copy for each possible move
-            Board b = this->board;
             // Check if the move performed was a jump
             // Move the checker on the board copy
-            b.moveChecker(lastPos, m, isJumpMove);
+            this->board.moveChecker(lastPos, m, isJumpMove);
             // Perform minimax on this board state (is now minimizing (Player's move))
-            int score = minimax(b, 4, false);
+            int score = minimax(this->board, 3, false);
+            this->board.undo(m, lastPos, isJumpMove);
             // Compare the score to the current best score (AI is maximizing so the highest score)
             // Update the score, move to make, and the checker to move
             if(score > bestScore) {
@@ -347,7 +347,6 @@ void Game::aiTurn() {
         onTurnChange();
     }
 }
-
 
 // AI is maximizing
 // Player is minimizing
@@ -391,7 +390,6 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
                 int moveScore = 0;
                 sf::Vector2i lastPos = c->getPosition();
                 // Create a board copy for each possible move
-                Board b = board;
                 // Check if the move performed was a jump
                 bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
                 // If the move captures a checker, give it +10 score
@@ -403,10 +401,11 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
                     moveScore += 5;
                 }
                 // Move the checker on the board copy
-                b.moveChecker(lastPos, m, isJumpMove);
+                board.moveChecker(lastPos, m, isJumpMove);
                 // Perform minimax on this board state (is now minimizing (Player's move))
                 // If the AI jumps and has an available move, it gets another turn
-                int score = minimax(b, depth-1, isJumpMove && hasMoves(b, c, true));
+                int score = minimax(board, depth-1, isJumpMove && hasMoves(board, c, true));
+                board.undo(m, lastPos, isJumpMove);
                 bestScore = std::max(bestScore, score + moveScore);
             }
         }
@@ -421,7 +420,6 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
                 int moveScore = 0;
                 sf::Vector2i lastPos = c->getPosition();
                 // Create a board copy for each possible move
-                Board b = board;
                 // Check if the move performed was a jump
                 bool isJumpMove = (m.x - BOARD_SQUARE_SIZE*2) == lastPos.x || (m.x + BOARD_SQUARE_SIZE*2) == lastPos.x;
                 // If the move captures a checker, give it -10 score
@@ -433,9 +431,10 @@ int Game::minimax(Board board, int depth, bool isMaximizing) {
                     moveScore -= 5;
                 }
                 // Move the checker on the board copy
-                b.moveChecker(lastPos, m, isJumpMove);
+                board.moveChecker(lastPos, m, isJumpMove);
                 // Perform minimax on this board state (is now maximizing (AI's move))
-                int score = minimax(b, depth-1, !(isJumpMove && hasMoves(b, c, true)));
+                int score = minimax(board, depth-1, !(isJumpMove && hasMoves(board, c, true)));
+                board.undo(m, lastPos, isJumpMove);
                 bestScore = std::min(bestScore, score + moveScore);
             }
         }

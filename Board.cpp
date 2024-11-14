@@ -169,6 +169,50 @@ void Board::removeChecker(sf::Vector2i pos) {
     deleteChecker(board[checkerPos.y][checkerPos.x]);
 }
 
+int Board::generateCheckerID() {
+    std::vector<std::shared_ptr<Checker>> checkers;
+    checkers.reserve(redCheckers.size() + blackCheckers.size());
+
+    // Insert elements from vec1 and vec2
+    checkers.insert(checkers.end(), redCheckers.begin(), redCheckers.end());
+    checkers.insert(checkers.end(), blackCheckers.begin(), blackCheckers.end());
+
+    int availableID = 0;
+    bool isDiff = false;
+    while(!isDiff) {
+        isDiff = true;
+        for(std::shared_ptr<Checker> checker : checkers) {
+            if(availableID == checker->getID()) {
+                availableID++;
+                isDiff = false;
+            }
+        }
+    }
+    return availableID;
+}
+
+
+void Board::undo(sf::Vector2i from, sf::Vector2i to, bool isJump) {
+    sf::Vector2i boardFrom = worldToArray(from);
+    Player enemyChecker = getOpposite(board[boardFrom.y][boardFrom.x]->getPlayer());
+    moveChecker(from, to, false);
+    if(isJump) {
+        int deltaX = from.x - to.x;
+        int deltaY = from.y - to.y;
+        int xHalf = from.x - (deltaX / 2);
+        int yHalf = from.y - (deltaY / 2);
+        sf::Vector2i worldPos = getClosestPosition({xHalf, yHalf});
+        sf::Vector2i boardPos = worldToArray(worldPos);
+        std::shared_ptr<Checker> checker = std::make_shared<Checker>(worldPos, enemyChecker, generateCheckerID());
+        board[boardPos.y][boardPos.x] = checker;
+        if(enemyChecker == BLACK) {
+            blackCheckers.push_back(checker);
+        }else {
+            redCheckers.push_back(checker);
+        }
+
+    }
+}
 
 void Board::moveChecker(sf::Vector2i from, sf::Vector2i to, bool isJump) {
     sf::Vector2i boardFrom = worldToArray(from);
