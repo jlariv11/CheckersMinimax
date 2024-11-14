@@ -140,9 +140,7 @@ GameState Game::hasWinner(Board board) {
 void Game::run() {
     ScreenManager *screenManager = ScreenManager::getInstance();
     screenManager->start();
-    int adjustTime = 0;
     while(screenManager->getWindow()->isOpen()) {
-        int startTime = sf::Clock().getElapsedTime().asMilliseconds();
         // Events(Input)
         sf::Event event;
         while(screenManager->getWindow()->pollEvent(event)) {
@@ -159,22 +157,8 @@ void Game::run() {
                 processMouseMove(event);
             }
         }
-
-
         // Render
         screenManager->drawScreen(this->board, currentPlayer, gameState);
-
-        int currentTime = sf::Clock().getElapsedTime().asMilliseconds();
-        int deltaTime = currentTime - startTime;
-        int intendedSleepTime = 33 - deltaTime - adjustTime;
-        if(intendedSleepTime < 0) {
-            intendedSleepTime = 0;
-        }
-        sf::sleep(sf::milliseconds(intendedSleepTime));
-        adjustTime = sf::Clock().getElapsedTime().asMilliseconds() - intendedSleepTime;
-        if(adjustTime < 0) {
-            adjustTime = 0;
-        }
     }
 }
 
